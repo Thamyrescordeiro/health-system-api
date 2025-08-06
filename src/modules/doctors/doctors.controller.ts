@@ -10,6 +10,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { DoctorsService } from './doctors.service';
+import { PatientService } from '../patient/patient.service';
 import { CreateDoctorDto } from './dtos/create-doctors.dto';
 import { UpdateDoctorDto } from './dtos/update-doctors.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -25,7 +26,10 @@ interface RequestUser {
 @Controller('doctors')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DoctorsController {
-  constructor(private readonly doctorService: DoctorsService) {}
+  constructor(
+    private readonly doctorService: DoctorsService,
+    private readonly patientService: PatientService,
+  ) {}
 
   @Post('create')
   @Roles('doctor')
@@ -55,6 +59,11 @@ export class DoctorsController {
   @Roles('doctor', 'patient')
   async findBySpecialty(@Param('specialty') specialty: string) {
     return await this.doctorService.findBySpecialty(specialty);
+  }
+  @Get('by-cpf/:cpf')
+  @Roles('doctor')
+  async findByCpf(@Param('cpf') cpf: string) {
+    return await this.patientService.findByCpf(cpf);
   }
 
   @Patch('update/:id')
