@@ -17,13 +17,8 @@ export class AppoimentsService {
     private readonly doctorsService: DoctorsService,
   ) {}
 
-  async create(appoiment: CreateAppoimentsDto) {
-    const { patient_id, doctor_id, dateTime, status, notes } = appoiment;
-
-    const patientExists = await this.patientService.patientExists(patient_id);
-    if (!patientExists) {
-      throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
-    }
+  async create(appoiment: CreateAppoimentsDto, patientId: string) {
+    const { doctor_id, dateTime, status, notes } = appoiment;
 
     const doctorExists = await this.doctorsService.findById(doctor_id);
     if (!doctorExists) {
@@ -31,7 +26,7 @@ export class AppoimentsService {
     }
 
     const createAppoiment = await this.appoimentsModel.create({
-      patient_id,
+      patient_id: patientId,
       doctor_id,
       dateTime,
       status,
@@ -47,13 +42,32 @@ export class AppoimentsService {
     });
   }
 
-  async findById(appoiments_id: string) {
+  async findById(
+    appoiments_id: string,
+    userId: string,
+    userRole: 'patient' | 'doctor',
+  ) {
     const appoiment = await this.appoimentsModel.findByPk(appoiments_id, {
       include: [Patient, Doctor],
     });
     if (!appoiment) {
       throw new HttpException('Appoiment not found', HttpStatus.NOT_FOUND);
     }
+
+    if (userRole === 'patient' && appoiment.patient_id !== userId) {
+      throw new HttpException(
+        'You are not allowed to view this appoiment',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (userRole === 'doctor' && appoiment.doctor_id !== userId) {
+      throw new HttpException(
+        'You are not allowed to view this appoiment',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     return appoiment;
   }
 
@@ -71,6 +85,13 @@ export class AppoimentsService {
     });
   }
 
+  async findByPatient(patientId: string) {
+    return this.appoimentsModel.findAll({
+      where: { patient_id: patientId },
+      include: [Doctor],
+    });
+  }
+
   async findByCpf(cpf: string) {
     const patient = await this.patientService.findByCpf(cpf);
     if (!patient) {
@@ -80,6 +101,40 @@ export class AppoimentsService {
       where: { patient_id: patient.patient_id },
       include: [Patient, Doctor],
     });
+  }
+
+  async reschedule(
+    appoiments_id: string,
+    newDateTime: string,
+    patientId: string,
+  ) {
+    const appointment = await this.findById(
+      appoiments_id,
+      patientId,
+      'patient',
+    );
+
+    if (!appointment) {
+      throw new HttpException('Appointment not found', HttpStatus.NOT_FOUND);
+    }
+
+    const newDate = new Date(newDateTime);
+    if (isNaN(newDate.getTime())) {
+      throw new HttpException('Invalid birth date', HttpStatus.BAD_REQUEST);
+    }
+
+    if (newDate <= new Date()) {
+      throw new HttpException(
+        'New date must be in the future',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await this.appoimentsModel.update(
+      { dateTime: newDateTime },
+      { where: { appoiments_id } },
+    );
+    return { message: 'Appointment rescheduled successfully' };
   }
 
   async update(appoiments_id: string, updateData: UpdateAppoimentsDto) {
@@ -117,11 +172,30 @@ export class AppoimentsService {
     return updatedAppoiment;
   }
 
-  async delete(appoiments_id: string) {
+  async delete(
+    appoiments_id: string,
+    userId: string,
+    userRole: 'patient' | 'doctor',
+  ) {
     const appoiment = await this.appoimentsModel.findByPk(appoiments_id);
     if (!appoiment) {
       throw new HttpException('Appoiment not found', HttpStatus.NOT_FOUND);
     }
+
+    if (userRole === 'patient' && appoiment.patient_id !== userId) {
+      throw new HttpException(
+        'You are not allowed to delete this appoiment',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (userRole === 'doctor' && appoiment.doctor_id !== userId) {
+      throw new HttpException(
+        'You are not allowed to delete this appoiment',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     await this.appoimentsModel.destroy({ where: { appoiments_id } });
     return { message: 'Appoiment deleted successfully' };
   }

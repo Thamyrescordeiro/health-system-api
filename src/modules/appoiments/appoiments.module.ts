@@ -4,6 +4,7 @@ import { Appoiments } from './appoiments.entity';
 import { AppoimentsService } from './appoiments.service';
 import { PatientModule } from '../patient/patient.module';
 import { DoctorsModule } from '../doctors/doctors.module';
+import { AppoimentsController } from './appoiments.controller';
 
 @Module({
   imports: [
@@ -12,5 +13,6 @@ import { DoctorsModule } from '../doctors/doctors.module';
     DoctorsModule,
   ],
   providers: [AppoimentsService],
+  controllers: [AppoimentsController],
 })
 export class AppoimentsModule {}
