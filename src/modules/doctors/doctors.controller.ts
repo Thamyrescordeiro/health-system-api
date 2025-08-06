@@ -67,7 +67,7 @@ export class DoctorsController {
   }
 
   @Patch('update/:id')
-  @Roles('doctor', 'patient')
+  @Roles('doctor')
   async update(
     @Param('id') doctor_id: string,
     @Body() doctor: UpdateDoctorDto,

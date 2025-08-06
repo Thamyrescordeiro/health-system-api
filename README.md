@@ -61,6 +61,7 @@ A API é acessada através da URL base `http://localhost:3000` (ou a porta que o
 | `POST` | `/patients/create` | Cria um novo paciente. | Doutor, Paciente |
 | `GET` | `/patients` | Lista todos os pacientes. | Doutor |
 | `GET` | `/patients/:id` | Busca um paciente por ID. | Doutor, Paciente |
+| `GET` | `/patients/by-cpf/:cpf` | Busca um paciente por CPF. | Doutor |
 | `PATCH` | `/patients/update/:id` | Atualiza os dados de um paciente. | Doutor, Paciente |
 | `DELETE` | `/patients/delete/:id` | Deleta um paciente. | Doutor, Paciente |
 
@@ -73,8 +74,8 @@ A API é acessada através da URL base `http://localhost:3000` (ou a porta que o
 | `GET` | `/doctors/by-id/:id` | Busca um doutor por ID. | Doutor, Paciente |
 | `GET` | `/doctors/by-crm/:crm` | Busca um doutor por CRM. | Doutor |
 | `GET` | `/doctors/by-specialty/:specialty` | Busca doutores por especialidade. | Doutor, Paciente |
-| `PATCH` | `/doctors/update/:id` | Atualiza os dados de um doutor. | Doutor, Paciente |
-| `DELETE` | `/doctors/delete/:id` | Deleta um doutor. | Doutor, Paciente |
+| `PATCH` | `/doctors/update/:id` | Atualiza os dados de um doutor. | Doutor |
+| `DELETE` | `/doctors/delete/:id` | Deleta um doutor. | Doutor |
 
 ### **Agendamentos**
 
@@ -83,10 +84,12 @@ A API é acessada através da URL base `http://localhost:3000` (ou a porta que o
 | `POST` | `/appoiments/create` | Cria um agendamento. | Paciente |
 | `GET` | `/appoiments/my-appoiments` | Lista os agendamentos do paciente logado. | Paciente |
 | `GET` | `/appoiments/my-doctor-appoiments` | Lista os agendamentos do doutor logado. | Doutor |
+| `GET` | `/appoiments/by-date/:date` | Busca agendamentos por data. | Doutor, Paciente |
 | `PATCH` | `/appoiments/reschedule/:id` | Reagenda uma consulta. | Paciente |
 | `DELETE` | `/appoiments/cancel/:id` | Cancela uma consulta. | Doutor, Paciente |
 
 ---
+
 
 ## Como Rodar a API Localmente
 
@@ -101,6 +104,13 @@ Siga estes passos para configurar e executar a API:
 ### **Instalação**
 
 1.  **Clone o Repositório:**
+    ```bash
+    git clone [https://github.com/Thamyrescordeiro/health-system-api](https://github.com/Thamyrescordeiro/health-system-api)
+    ```
+2.  **Navegue até a Pasta do Projeto:**
+    ```bash
+    cd health-system-api
+    ```
     
 3.  **Crie o Arquivo `.env`:**
     * Crie um arquivo chamado `.env` na raiz do projeto.
