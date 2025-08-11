@@ -13,7 +13,9 @@ export class DoctorsService {
     @InjectModel(User) private readonly userModel: typeof User,
   ) {}
 
-  async create(doctor: CreateDoctorDto) {
+  async create(doctor: CreateDoctorDto & { user_id: string }) {
+    await this.validateCrm(doctor.crm);
+    this.validateBirthDate(doctor.birthDate);
     const createDoctor = await this.doctorModel.create(doctor);
     return createDoctor;
   }
@@ -54,7 +56,6 @@ export class DoctorsService {
   async update(doctor_id: string, doctor: UpdateDoctorDto) {
     const existingDoctor = await this.findById(doctor_id);
     if (!existingDoctor) {
-      // Corrigido: Mensagem de erro para Doutor
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
 
@@ -100,6 +101,10 @@ export class DoctorsService {
     const doctor = await this.findById(doctor_id);
 
     if (!doctor) {
+      console.log('User Role:', userRole);
+      console.log('User ID from token:', userId);
+      console.log('Doctor user_id:', doctor.user_id);
+
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
     if (userRole === 'doctor' && doctor.user_id !== userId) {

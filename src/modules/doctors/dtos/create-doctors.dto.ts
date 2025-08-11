@@ -34,5 +34,5 @@ export class CreateDoctorDto {
 
   @IsNotEmpty()
   @IsString()
-  speciality: string;
+  specialty: string;
 }

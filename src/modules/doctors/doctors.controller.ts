@@ -33,12 +33,14 @@ export class DoctorsController {
 
   @Post('create')
   @Roles('doctor')
-  async create(@Body() doctor: CreateDoctorDto) {
-    return await this.doctorService.create(doctor);
+  async create(@Body() doctor: CreateDoctorDto, @Req() req: Request) {
+    const user = req.user as RequestUser;
+    const userId = user.user_id;
+    return await this.doctorService.create({ ...doctor, user_id: userId });
   }
 
   @Get()
-  @Roles('doctor', 'patient')
+  @Roles('doctor')
   async findAll() {
     return await this.doctorService.findAll();
   }

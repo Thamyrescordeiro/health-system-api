@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule } from './database/database.module'; // Importa o módulo de banco de dados
-import { AuthModule } from '../src/modules/auth/auth.module';
-import { UserModule } from '../src/modules/user/user.module';
-import { PatientModule } from '../src/modules/patient/patient.module';
-import { DoctorsModule } from '../src/modules/doctors/doctors.module';
-import { AppoimentsModule } from '../src/modules/appoiments/appoiments.module';
+import { DatabaseModule } from './database/database.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
+import { PatientModule } from './modules/patient/patient.module';
+import { DoctorsModule } from './modules/doctors/doctors.module';
+import { AppoimentsModule } from './modules/appoiments/appoiments.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AppoimentsModule } from '../src/modules/appoiments/appoiments.module';
     PatientModule,
     DoctorsModule,
     AppoimentsModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [],

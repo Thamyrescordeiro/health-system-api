@@ -10,6 +10,6 @@ import { UserController } from './user.controller';
   imports: [SequelizeModule.forFeature([User, Patient, Doctor])],
   controllers: [UserController],
   providers: [UserService],
-  exports: [UserService],
+  exports: [UserService, SequelizeModule],
 })
 export class UserModule {}

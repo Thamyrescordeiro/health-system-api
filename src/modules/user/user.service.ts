@@ -7,14 +7,16 @@ import { CreateUserDto } from './dtos/create-user.dto';
 export class UserService {
   constructor(@InjectModel(User) private readonly userModel: typeof User) {}
 
-  async create(user: CreateUserDto) {
+  async create(userDto: CreateUserDto) {
     const existingUser = await this.userModel.findOne({
-      where: { email: user.email },
+      where: { email: userDto.email },
     });
     if (existingUser) {
       throw new HttpException('Email already exists', HttpStatus.BAD_REQUEST);
     }
-    const createdUser = await this.userModel.create(user);
+
+    const createdUser = await this.userModel.create(userDto);
+
     return createdUser;
   }
 

@@ -11,8 +11,8 @@ export class CreateUserDto {
   password: string;
 
   @IsNotEmpty()
-  @IsEnum(['patient', 'doctor'], {
-    message: 'Role must be either patient or doctor',
+  @IsEnum(['patient', 'doctor', 'admin'], {
+    message: 'Role must be either patient, doctor or admin',
   })
-  role: 'patient' | 'doctor';
+  role: 'patient' | 'doctor' | 'admin';
 }

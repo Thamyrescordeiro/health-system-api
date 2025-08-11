@@ -1,54 +1,52 @@
 import {
+  Table,
   Column,
   DataType,
   Default,
-  Model,
   PrimaryKey,
-  Table,
+  Model,
   BeforeCreate,
   BeforeUpdate,
 } from 'sequelize-typescript';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from '../user/dtos/create-user.dto';
-import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dtos/create-user.dto';
 
-@Injectable()
 @Table({ tableName: 'users', timestamps: true })
 export class User extends Model<User, CreateUserDto> {
+  async comparePassword(pass: string): Promise<boolean> {
+    return await bcrypt.compare(pass, this.password);
+  }
+
   @PrimaryKey
   @Default(DataType.UUIDV4)
   @Column(DataType.UUID)
-  public user_id: string;
+  declare user_id: string;
+
+  @Column({ type: DataType.STRING, unique: true, allowNull: false })
+  declare email: string;
+
+  @Column({ type: DataType.STRING, allowNull: false })
+  declare password: string;
 
   @Column({
-    type: DataType.STRING,
-    unique: true,
+    type: DataType.ENUM('patient', 'doctor', 'admin'),
     allowNull: false,
   })
-  email: string;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-  })
-  password: string;
-
-  @Column({
-    type: DataType.ENUM('patient', 'doctor'),
-    allowNull: false,
-  })
-  role: 'patient' | 'doctor';
+  declare role: 'patient' | 'doctor' | 'admin';
 
   @BeforeCreate
   @BeforeUpdate
-  public static hashPassword(instance: User) {
-    if (instance.changed('password')) {
-      const salt = bcrypt.genSaltSync();
-      instance.password = bcrypt.hashSync(instance.password, salt);
-    }
-  }
+  static async hashPassword(instance: User) {
+    const pwd = instance.getDataValue('password');
 
-  public async comparePassword(password: string): Promise<boolean> {
-    return bcrypt.compare(password, this.password);
+    if (
+      instance.changed('password') &&
+      typeof pwd === 'string' &&
+      pwd.length > 0
+    ) {
+      const salt = await bcrypt.genSalt(10);
+      const hashed = await bcrypt.hash(pwd, salt);
+      instance.setDataValue('password', hashed);
+    }
   }
 }
