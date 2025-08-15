@@ -1,4 +1,3 @@
-// src/doctors/doctors.service.ts
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Doctor } from './doctors.entity';
@@ -15,15 +14,21 @@ export class DoctorsService {
 
   async create(doctor: CreateDoctorDto & { user_id: string }) {
     await this.validateCrm(doctor.crm);
+
     this.validateBirthDate(doctor.birthDate);
+
+    const user = await this.userModel.findByPk(doctor.user_id);
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
+    }
+
     const createDoctor = await this.doctorModel.create(doctor);
     return createDoctor;
   }
 
-  async validateEmail(email: string, excludeDoctorId?: string) {
+  async validateEmail(email: string, excludeUserId?: string) {
     const existingUser = await this.userModel.findOne({ where: { email } });
-
-    if (existingUser && existingUser.user_id !== excludeDoctorId) {
+    if (existingUser && existingUser.user_id !== excludeUserId) {
       throw new HttpException('Email already exists', HttpStatus.BAD_REQUEST);
     }
     return true;
@@ -31,7 +36,6 @@ export class DoctorsService {
 
   async validateCrm(crm: string, excludeDoctorId?: string) {
     const existing = await this.doctorModel.findOne({ where: { crm } });
-
     if (existing && existing.doctor_id !== excludeDoctorId) {
       throw new HttpException('CRM already exists', HttpStatus.BAD_REQUEST);
     }
@@ -43,7 +47,6 @@ export class DoctorsService {
     if (isNaN(parsedDate.getTime())) {
       throw new HttpException('Invalid birth date', HttpStatus.BAD_REQUEST);
     }
-
     const now = new Date();
     if (parsedDate > now) {
       throw new HttpException(
@@ -67,9 +70,7 @@ export class DoctorsService {
       this.validateBirthDate(doctor.birthDate);
     }
 
-    await this.doctorModel.update(doctor, {
-      where: { doctor_id: doctor_id },
-    });
+    await this.doctorModel.update(doctor, { where: { doctor_id } });
     const updatedDoctor = await this.findById(doctor_id);
     return updatedDoctor;
   }
@@ -87,7 +88,7 @@ export class DoctorsService {
   }
 
   async findBySpecialty(specialty: string) {
-    return await this.doctorModel.findOne({
+    return await this.doctorModel.findAll({
       where: { specialty },
       include: [User],
     });
@@ -96,17 +97,14 @@ export class DoctorsService {
   async delete(
     doctor_id: string,
     userId: string,
-    userRole: 'patient' | 'doctor',
+    userRole: 'patient' | 'doctor' | 'admin',
   ) {
     const doctor = await this.findById(doctor_id);
 
     if (!doctor) {
-      console.log('User Role:', userRole);
-      console.log('User ID from token:', userId);
-      console.log('Doctor user_id:', doctor.user_id);
-
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
+
     if (userRole === 'doctor' && doctor.user_id !== userId) {
       throw new HttpException(
         'You are not allowed to delete this doctor record',
