@@ -94,6 +94,11 @@ export class DoctorsService {
     });
   }
 
+  async findAllSpecialties() {
+    const doctors = await this.doctorModel.findAll();
+    return [...new Set(doctors.map((d) => d.specialty))];
+  }
+
   async delete(
     doctor_id: string,
     userId: string,

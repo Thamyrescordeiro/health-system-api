@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class UpdateDoctorDto {
   @IsOptional()
@@ -24,4 +24,8 @@ export class UpdateDoctorDto {
   @IsOptional()
   @IsString()
   speciality?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }

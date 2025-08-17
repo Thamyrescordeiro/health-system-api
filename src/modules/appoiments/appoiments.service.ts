@@ -209,4 +209,32 @@ export class AppoimentsService {
     await this.appoimentsModel.destroy({ where: { appoiments_id } });
     return { message: 'Appoiment deleted successfully' };
   }
+
+  async findAvailableByDoctor(doctor_id: string, date: string) {
+    const startDay = new Date(date + 'T00:00:00');
+    const endDay = new Date(date + 'T23:59:59');
+
+    const appointments = await this.appoimentsModel.findAll({
+      where: {
+        doctor_id,
+        dateTime: {
+          $between: [startDay, endDay],
+        },
+      },
+    });
+    const availableSlots = [
+      '08:00',
+      '09:00',
+      '10:00',
+      '11:00',
+      '14:00',
+      '15:00',
+      '16:00',
+    ];
+    const takenHours = appointments.map((a) =>
+      new Date(a.dateTime).toISOString().substring(11, 16),
+    );
+
+    return availableSlots.filter((hour) => !takenHours.includes(hour));
+  }
 }

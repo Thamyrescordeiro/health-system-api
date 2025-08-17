@@ -55,6 +55,12 @@ export class Doctor extends Model<Doctor, CreateDoctorDto> {
   })
   birthDate: string;
 
+  @Default(true)
+  @Column({
+    type: DataType.BOOLEAN,
+  })
+  active: boolean;
+
   @ForeignKey(() => User)
   @Column(DataType.UUID)
   user_id: string;

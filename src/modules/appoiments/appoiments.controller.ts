@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -73,6 +74,14 @@ export class AppoimentsController {
     const user = req.user as RequestUser;
     const doctorId = user.user_id;
     return await this.appoimentsService.findByDoctor(doctorId);
+  }
+
+  @Get('doctors/:id/availability')
+  async getDoctorAvailability(
+    @Param('id') doctorId: string,
+    @Query('date') date: string,
+  ) {
+    return this.appoimentsService.findAvailableByDoctor(doctorId, date);
   }
 
   @Delete('cancel/:id')

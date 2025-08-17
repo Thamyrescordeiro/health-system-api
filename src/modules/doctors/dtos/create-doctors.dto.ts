@@ -1,6 +1,8 @@
 import {
+  IsBoolean,
   IsDateString,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Length,
   Matches,
@@ -35,4 +37,8 @@ export class CreateDoctorDto {
   @IsNotEmpty()
   @IsString()
   specialty: string;
+
+  @IsBoolean()
+  @IsOptional()
+  active?: boolean;
 }

@@ -32,6 +32,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/passport-jwt": "^4.0.1",
     "bcryptjs": "^3.0.2",
+    "brcypt": "^1.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "dotenv": "^17.2.1",

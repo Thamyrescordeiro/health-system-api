@@ -62,10 +62,9 @@ export class DoctorsController {
   async findBySpecialty(@Param('specialty') specialty: string) {
     return await this.doctorService.findBySpecialty(specialty);
   }
-  @Get('by-crm/:crm')
-  @Roles('doctor', 'admin')
-  async findByCpf(@Param('crm') crm: string) {
-    return await this.patientService.findByCpf(crm);
+  @Get('specialties')
+  async getSpecialties() {
+    return this.doctorService.findAllSpecialties();
   }
 
   @Patch('update/:id')

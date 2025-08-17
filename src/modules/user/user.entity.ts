@@ -9,6 +9,7 @@ import {
   BeforeUpdate,
 } from 'sequelize-typescript';
 import * as bcrypt from 'bcryptjs';
+
 import { CreateUserDto } from './dtos/create-user.dto';
 
 @Table({ tableName: 'users', timestamps: true })
