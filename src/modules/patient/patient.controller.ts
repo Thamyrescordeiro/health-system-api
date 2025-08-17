@@ -22,15 +22,17 @@ interface RequestUser {
   role: 'patient' | 'doctor';
 }
 
-@Controller('patients')
+@Controller('patient')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PatientController {
   constructor(private readonly patientService: PatientService) {}
 
   @Post('create')
   @Roles('doctor', 'patient')
-  async create(@Body() patient: CreatePatientDto) {
-    return await this.patientService.create(patient);
+  async create(@Body() patient: CreatePatientDto, @Req() req: Request) {
+    const user = req.user as RequestUser;
+    const userId = user.user_id;
+    return await this.patientService.create({ ...patient, user_id: userId });
   }
 
   @Get()

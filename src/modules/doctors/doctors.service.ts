@@ -101,10 +101,6 @@ export class DoctorsService {
     const doctor = await this.findById(doctor_id);
 
     if (!doctor) {
-      console.log('User Role:', userRole);
-      console.log('User ID from token:', userId);
-      console.log('Doctor user_id:', doctor.user_id);
-
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
     if (userRole === 'doctor' && doctor.user_id !== userId) {

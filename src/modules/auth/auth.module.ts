@@ -7,6 +7,9 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Doctor } from '../doctors/doctors.entity';
+import { Patient } from '../patient/patient.entity';
+import { Admin } from '../admin/admin.entity';
 
 @Module({
   imports: [
@@ -20,7 +23,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
       inject: [ConfigService],
     }),
-    SequelizeModule.forFeature([User]),
+    SequelizeModule.forFeature([User, Doctor, Patient, Admin]),
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

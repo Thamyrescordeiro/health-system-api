@@ -23,7 +23,7 @@ interface RequestUser {
   role: 'patient' | 'doctor';
 }
 
-@Controller('doctors')
+@Controller('doctor')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DoctorsController {
   constructor(
@@ -32,7 +32,7 @@ export class DoctorsController {
   ) {}
 
   @Post('create')
-  @Roles('doctor')
+  @Roles('doctor', 'admin')
   async create(@Body() doctor: CreateDoctorDto, @Req() req: Request) {
     const user = req.user as RequestUser;
     const userId = user.user_id;
@@ -40,36 +40,36 @@ export class DoctorsController {
   }
 
   @Get()
-  @Roles('doctor')
+  @Roles('doctor', 'admin')
   async findAll() {
     return await this.doctorService.findAll();
   }
 
   @Get('by-crm/:crm')
-  @Roles('doctor')
+  @Roles('doctor', 'admin')
   async findByCrm(@Param('crm') crm: string) {
     return await this.doctorService.findByCrm(crm);
   }
 
   @Get('by-id/:id')
-  @Roles('doctor', 'patient')
+  @Roles('doctor', 'admin')
   async findById(@Param('id') doctor_id: string) {
     return await this.doctorService.findById(doctor_id);
   }
 
   @Get('by-specialty/:specialty')
-  @Roles('doctor', 'patient')
+  @Roles('doctor', 'patient', 'admin')
   async findBySpecialty(@Param('specialty') specialty: string) {
     return await this.doctorService.findBySpecialty(specialty);
   }
-  @Get('by-cpf/:cpf')
-  @Roles('doctor')
-  async findByCpf(@Param('cpf') cpf: string) {
-    return await this.patientService.findByCpf(cpf);
+  @Get('by-crm/:crm')
+  @Roles('doctor', 'admin')
+  async findByCpf(@Param('crm') crm: string) {
+    return await this.patientService.findByCpf(crm);
   }
 
   @Patch('update/:id')
-  @Roles('doctor')
+  @Roles('doctor', 'admin')
   async update(
     @Param('id') doctor_id: string,
     @Body() doctor: UpdateDoctorDto,
@@ -78,7 +78,7 @@ export class DoctorsController {
   }
 
   @Delete('delete/:id')
-  @Roles('doctor')
+  @Roles('doctor', 'admin')
   async delete(@Param('id') doctor_id: string, @Req() req: Request) {
     const user = req.user as RequestUser;
     const userId = user.user_id;

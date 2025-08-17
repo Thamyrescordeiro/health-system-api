@@ -1,4 +1,3 @@
-// src/patient/patient.service.ts
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Patient } from './patient.entity';
@@ -11,12 +10,12 @@ export class PatientService {
     @InjectModel(Patient) private readonly patientModel: typeof Patient,
   ) {}
 
-  async create(patient: CreatePatientDto) {
+  async create(patient: CreatePatientDto & { user_id: string }) {
     await this.validateCpf(patient.cpf);
     this.validateBirthDate(patient.birthDate);
 
-    const createPatient = await this.patientModel.create(patient);
-    return createPatient;
+    const createdPatient = await this.patientModel.create(patient);
+    return createdPatient;
   }
 
   async validateCpf(cpf: string, excludePatientId?: string) {

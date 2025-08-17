@@ -24,15 +24,25 @@ export class AppoimentsService {
     if (!doctorExists) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
+    const patientExists = await this.patientService.findById(patientId);
+    if (!patientExists) {
+      throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
+    }
+    const patientEmail = patientExists.user?.email;
+    if (!patientEmail) {
+      throw new HttpException(
+        'Patient email not found',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
-    const createAppoiment = await this.appoimentsModel.create({
-      patient_id: patientId,
+    const createAppoiment = await this.appoimentsModel.create<Appoiments>({
+      patient_id: patientExists.patient_id,
       doctor_id,
       dateTime,
       status,
       notes,
     });
-
     return createAppoiment;
   }
 
