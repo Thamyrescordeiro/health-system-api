@@ -11,11 +11,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AppoimentsService } from './appoiments.service';
-import { CreateAppoimentsDto } from './dtos/create-appoiments.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Request } from 'express';
+import { CreateAppoimentsDto } from './dtos/create-appoiments.dto';
 
 interface RequestUser {
   user_id: string;
@@ -31,12 +31,11 @@ export class AppoimentsController {
   @Roles('patient')
   async create(@Body() appoiment: CreateAppoimentsDto, @Req() req: Request) {
     const user = req.user as RequestUser;
-    const patientId = user.user_id;
-    return await this.appoimentsService.create(appoiment, patientId);
+    return await this.appoimentsService.create(appoiment, user.user_id);
   }
 
   @Get(':id')
-  @Roles('doctor', 'patient')
+  @Roles('doctor', 'patient', 'admin')
   async findById(@Param('id') appoiments_id: string, @Req() req: Request) {
     const user = req.user as RequestUser;
     const userId = user.user_id;
@@ -49,19 +48,19 @@ export class AppoimentsController {
   }
 
   @Get('by-date/:date')
-  @Roles('doctor', 'patient')
+  @Roles('doctor', 'patient', 'admin')
   async findByDate(@Param('date') date: string) {
     return await this.appoimentsService.findByDate(date);
   }
 
   @Get('by-cpf/:cpf')
-  @Roles('doctor')
+  @Roles('doctor', 'admin')
   async findByCpf(@Param('cpf') cpf: string) {
     return await this.appoimentsService.findByCpf(cpf);
   }
 
   @Get('my-appoiments')
-  @Roles('patient')
+  @Roles('patient', 'admin')
   async findMyPatientAppoiments(@Req() req: Request) {
     const user = req.user as RequestUser;
     const patientId = user.user_id;
@@ -69,7 +68,7 @@ export class AppoimentsController {
   }
 
   @Get('my-doctor-appoiments')
-  @Roles('doctor')
+  @Roles('doctor', 'admin')
   async findMyDoctorAppoiments(@Req() req: Request) {
     const user = req.user as RequestUser;
     const doctorId = user.user_id;

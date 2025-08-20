@@ -24,8 +24,5 @@ export class CreateAppoimentsDto {
   notes: string;
 
   @IsUUID()
-  patient_id: string;
-
-  @IsUUID()
   doctor_id: string;
 }

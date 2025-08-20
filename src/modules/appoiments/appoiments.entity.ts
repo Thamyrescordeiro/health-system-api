@@ -18,7 +18,7 @@ export class Appoiments extends Model<Appoiments, CreateAppoimentsDto> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
   @Column(DataType.UUID)
-  public appoiments_id: string;
+  appoiments_id!: string;
 
   @Column({
     type: DataType.STRING,
@@ -38,6 +38,7 @@ export class Appoiments extends Model<Appoiments, CreateAppoimentsDto> {
   notes: string;
 
   @ForeignKey(() => Patient)
+  @Column({ type: DataType.UUID, allowNull: false })
   patient_id: string;
 
   @BelongsTo(() => Patient)

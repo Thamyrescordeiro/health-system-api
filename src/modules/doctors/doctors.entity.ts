@@ -16,55 +16,55 @@ export class Doctor extends Model<Doctor, CreateDoctorDto> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
   @Column(DataType.UUID)
-  public doctor_id: string;
+  declare doctor_id: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  name: string;
+  declare name: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  lastName: string;
+  declare lastName: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
     unique: true,
   })
-  crm: string;
+  declare crm: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  phone: string;
+  declare phone: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  specialty: string;
+  declare specialty: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  birthDate: string;
+  declare birthDate: string;
 
   @Default(true)
   @Column({
     type: DataType.BOOLEAN,
   })
-  active: boolean;
+  declare active: boolean;
 
   @ForeignKey(() => User)
   @Column(DataType.UUID)
-  user_id: string;
+  declare user_id: string;
 
   @BelongsTo(() => User)
-  user: User;
+  declare user: User;
 }

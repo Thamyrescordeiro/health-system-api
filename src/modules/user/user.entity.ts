@@ -7,10 +7,12 @@ import {
   Model,
   BeforeCreate,
   BeforeUpdate,
+  HasOne,
 } from 'sequelize-typescript';
 import * as bcrypt from 'bcryptjs';
 
 import { CreateUserDto } from './dtos/create-user.dto';
+import { Patient } from '../patient/patient.entity';
 
 @Table({ tableName: 'users', timestamps: true })
 export class User extends Model<User, CreateUserDto> {
@@ -50,4 +52,6 @@ export class User extends Model<User, CreateUserDto> {
       instance.setDataValue('password', hashed);
     }
   }
+  @HasOne(() => Patient)
+  patient: Patient;
 }

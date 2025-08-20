@@ -3,11 +3,13 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Patient } from './patient.entity';
 import { CreatePatientDto } from './dtos/create-patient.dto';
 import { UpdatePatientDto } from './dtos/update-patient.dto';
+import { User } from '../user/user.entity'; // Import User model
 
 @Injectable()
 export class PatientService {
   constructor(
     @InjectModel(Patient) private readonly patientModel: typeof Patient,
+    @InjectModel(User) private readonly userModel: typeof User, // Inject User model
   ) {}
 
   async create(patient: CreatePatientDto & { user_id: string }) {
@@ -27,6 +29,12 @@ export class PatientService {
     return true;
   }
 
+  async findByUserId(userId: string) {
+    return await this.patientModel.findOne({
+      where: { user_id: userId },
+      include: [{ model: this.userModel, attributes: ['email'] }],
+    });
+  }
   async findByCpf(cpf: string) {
     return await this.patientModel.findOne({ where: { cpf } });
   }

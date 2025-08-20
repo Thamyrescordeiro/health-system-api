@@ -6,6 +6,8 @@ import { PatientModule } from './modules/patient/patient.module';
 import { DoctorsModule } from './modules/doctors/doctors.module';
 import { AppoimentsModule } from './modules/appoiments/appoiments.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { EmailService } from './Email/email.service';
+import { EmailModule } from './Email/email.module';
 
 @Module({
   imports: [
@@ -16,8 +18,9 @@ import { AdminModule } from './modules/admin/admin.module';
     DoctorsModule,
     AppoimentsModule,
     AdminModule,
+    EmailModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [EmailService],
 })
 export class AppModule {}

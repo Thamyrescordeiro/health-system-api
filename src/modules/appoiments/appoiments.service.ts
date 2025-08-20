@@ -7,6 +7,7 @@ import { PatientService } from '../patient/patient.service';
 import { DoctorsService } from '../doctors/doctors.service';
 import { Patient } from '../patient/patient.entity';
 import { Doctor } from '../doctors/doctors.entity';
+import { EmailService } from '../../Email/email.service';
 
 @Injectable()
 export class AppoimentsService {
@@ -15,19 +16,30 @@ export class AppoimentsService {
     private readonly appoimentsModel: typeof Appoiments,
     private readonly patientService: PatientService,
     private readonly doctorsService: DoctorsService,
+    private readonly emailService: EmailService,
   ) {}
 
-  async create(appoiment: CreateAppoimentsDto, patientId: string) {
+  async create(appoiment: CreateAppoimentsDto, userId: string) {
     const { doctor_id, dateTime, status, notes } = appoiment;
 
     const doctorExists = await this.doctorsService.findById(doctor_id);
     if (!doctorExists) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
-    const patientExists = await this.patientService.findById(patientId);
+    const patientExists = await this.patientService.findByUserId(userId);
     if (!patientExists) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
+    console.log(patientExists.toJSON());
+
+    const newAppointment = {
+      patient_id: patientExists.getDataValue('patient_id'),
+      doctor_id,
+      dateTime,
+      status,
+      notes,
+    };
+
     const patientEmail = patientExists.user?.email;
     if (!patientEmail) {
       throw new HttpException(
@@ -36,14 +48,21 @@ export class AppoimentsService {
       );
     }
 
-    const createAppoiment = await this.appoimentsModel.create<Appoiments>({
-      patient_id: patientExists.patient_id,
-      doctor_id,
-      dateTime,
-      status,
-      notes,
-    });
-    return createAppoiment;
+    await this.emailService.sendMail(
+      patientEmail,
+      'Consulta Confirmada',
+      `Olá ${patientExists.name}, sua consulta com Dr(a). ${doctorExists.name} foi agendada para ${new Date(dateTime).toLocaleString()}.`,
+    );
+
+    if (doctorExists.user?.email) {
+      await this.emailService.sendMail(
+        doctorExists.user.email,
+        'Nova Consulta Agendada',
+        `Olá Dr(a). ${doctorExists.name}, você tem uma nova consulta com ${patientExists.name} no dia ${new Date(dateTime).toLocaleString()}.`,
+      );
+    }
+
+    return await this.appoimentsModel.create(newAppointment);
   }
 
   async findAll() {

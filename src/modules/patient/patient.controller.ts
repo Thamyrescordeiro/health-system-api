@@ -8,6 +8,9 @@ import {
   Post,
   UseGuards,
   Req,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { PatientService } from './patient.service';
 import { CreatePatientDto } from './dtos/create-patient.dto';
@@ -35,6 +38,19 @@ export class PatientController {
     return await this.patientService.create({ ...patient, user_id: userId });
   }
 
+  @Get('me')
+  @Roles('patient')
+  async getMe(@Req() req: Request) {
+    const user = req.user as RequestUser;
+    const patient = await this.patientService.findByUserId(user.user_id);
+
+    if (!patient) {
+      throw new HttpException('Patient record not found', HttpStatus.NOT_FOUND);
+    }
+
+    return patient;
+  }
+
   @Get()
   @Roles('doctor')
   async findAll() {
@@ -43,8 +59,21 @@ export class PatientController {
 
   @Get(':id')
   @Roles('doctor', 'patient')
-  async findById(@Param('id') id: string) {
-    return await this.patientService.findById(id);
+  async findById(@Param('id') id: string, @Req() req: Request) {
+    const user = req.user as RequestUser;
+
+    const patient = await this.patientService.findById(id);
+    if (!patient) {
+      throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (user.role === 'patient' && patient.user_id !== user.user_id) {
+      throw new ForbiddenException(
+        'You are not allowed to access this patient record',
+      );
+    }
+
+    return patient;
   }
 
   @Patch('update/:id')

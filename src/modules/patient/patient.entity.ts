@@ -16,43 +16,43 @@ export class Patient extends Model<Patient, CreatePatientDto> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
   @Column(DataType.UUID)
-  public patient_id: string;
+  declare patient_id: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  name: string;
+  declare name: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  lastName: string;
+  declare lastName: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
     unique: true,
   })
-  cpf: string;
+  declare cpf: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  phone: string;
+  declare phone: string;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
   })
-  birthDate: string;
+  declare birthDate: string;
 
   @ForeignKey(() => User)
   @Column(DataType.UUID)
-  user_id: string;
+  declare user_id: string;
 
   @BelongsTo(() => User)
-  user: User;
+  declare user: User;
 }
