@@ -3,9 +3,18 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { AdminService } from './admin.service';
 import { Admin } from './admin.entity';
 import { AdminController } from './admin.controller';
+import { PatientModule } from '../patient/patient.module';
+import { DoctorsModule } from '../doctors/doctors.module';
+import { AppoimentsModule } from '../appoiments/appoiments.module';
 
 @Module({
-  imports: [SequelizeModule.forFeature([Admin])],
+  imports: [
+    SequelizeModule.forFeature([Admin]),
+    PatientModule,
+    DoctorsModule,
+    AppoimentsModule,
+  ],
+
   providers: [AdminService],
   controllers: [AdminController],
   exports: [AdminService],

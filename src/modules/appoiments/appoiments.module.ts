@@ -16,5 +16,6 @@ import { EmailModule } from 'src/Email/email.module';
   ],
   providers: [AppoimentsService],
   controllers: [AppoimentsController],
+  exports: [AppoimentsService, SequelizeModule],
 })
 export class AppoimentsModule {}
