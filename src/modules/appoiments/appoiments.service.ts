@@ -30,8 +30,15 @@ export class AppoimentsService {
     if (!patientExists) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
-    console.log(patientExists.toJSON());
-
+    const existingAppointment = await this.appoimentsModel.findOne({
+      where: { doctor_id, dateTime },
+    });
+    if (existingAppointment) {
+      throw new HttpException(
+        'This time slot is already booked for this doctor.',
+        HttpStatus.CONFLICT,
+      );
+    }
     const newAppointment = {
       patient_id: patientExists.getDataValue('patient_id'),
       doctor_id,

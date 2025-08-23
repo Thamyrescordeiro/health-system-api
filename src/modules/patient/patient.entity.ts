@@ -49,6 +49,12 @@ export class Patient extends Model<Patient, CreatePatientDto> {
   })
   declare birthDate: string;
 
+  @Default(true)
+  @Column({
+    type: DataType.BOOLEAN,
+  })
+  declare active: boolean;
+
   @ForeignKey(() => User)
   @Column(DataType.UUID)
   declare user_id: string;

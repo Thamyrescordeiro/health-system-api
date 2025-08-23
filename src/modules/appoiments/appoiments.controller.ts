@@ -76,6 +76,7 @@ export class AppoimentsController {
   }
 
   @Get('doctors/:id/availability')
+  @Roles('doctor', 'patient', 'admin')
   async getDoctorAvailability(
     @Param('id') doctorId: string,
     @Query('date') date: string,

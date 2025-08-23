@@ -1,4 +1,12 @@
-import { IsDateString, IsNotEmpty, IsString, Length } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 import { IsCPF } from './types';
 
 export class CreatePatientDto {
@@ -19,9 +27,16 @@ export class CreatePatientDto {
 
   @IsNotEmpty()
   @IsString()
+  @Matches(/^\+?[1-9]\d{1,14}$/, {
+    message: 'Phone number must be in E.164 format',
+  })
   phone: string;
 
   @IsNotEmpty()
   @IsDateString()
   birthDate: string;
+
+  @IsBoolean()
+  @IsOptional()
+  active?: boolean;
 }

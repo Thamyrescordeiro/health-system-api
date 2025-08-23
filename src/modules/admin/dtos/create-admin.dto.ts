@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsString, Length } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 import { IsCPF } from './types';
 
 export class CreateAdminDto {
@@ -17,7 +24,13 @@ export class CreateAdminDto {
   @IsCPF()
   cpf: string;
 
+  @IsBoolean()
   @IsNotEmpty()
   @IsString()
+  @Matches(/^\+?[1-9]\d{1,14}$/, {
+    message: 'Phone number must be in E.164 format',
+  })
   phone: string;
+  @IsOptional()
+  active?: boolean;
 }

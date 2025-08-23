@@ -16,36 +16,42 @@ export class Admin extends Model<Admin, CreateAdminDto> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
   @Column(DataType.UUID)
-  public admin_id: string;
+  declare admin_id: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  name: string;
+  declare name: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  lastname: string;
+  declare lastname: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  cpf: string;
+  declare cpf: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  phone: string;
+  declare phone: string;
+
+  @Default(true)
+  @Column({
+    type: DataType.BOOLEAN,
+  })
+  declare active: boolean;
 
   @ForeignKey(() => User)
   @Column(DataType.UUID)
-  user_id: string;
+  declare user_id: string;
 
   @BelongsTo(() => User)
-  user: User;
+  declare user: User;
 }

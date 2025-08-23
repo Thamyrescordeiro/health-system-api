@@ -1,6 +1,8 @@
-import { IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsOptional, IsString, IsDateString, IsBoolean } from 'class-validator';
+import { CreatePatientDto } from './create-patient.dto';
+import { PartialType } from '@nestjs/mapped-types';
 
-export class UpdatePatientDto {
+export class UpdatePatientDto extends PartialType(CreatePatientDto) {
   @IsOptional()
   @IsString()
   name?: string;
@@ -20,4 +22,8 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsDateString()
   birthDate?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
