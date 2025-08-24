@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
@@ -16,6 +17,14 @@ import { CreateDoctorDto } from '../doctors/dtos/create-doctors.dto';
 import { UpdateDoctorDto } from '../doctors/dtos/update-doctors.dto';
 import { CreatePatientDto } from '../patient/dtos/create-patient.dto';
 import { UpdatePatientDto } from '../patient/dtos/update-patient.dto';
+import { CreateAppoimentsDto } from '../appoiments/dtos/create-appoiments.dto';
+import { UpdateAppoimentsDto } from '../appoiments/dtos/update-appoiments.dto';
+import { Request } from 'express';
+
+interface RequestUser {
+  user_id: string;
+  role: 'patient' | 'doctor' | 'admin';
+}
 
 @Controller('admins')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -146,4 +155,61 @@ export class AdminController {
   }
 
   // Appoiments //
+
+  @Post('appoiments/create')
+  @Roles('admin')
+  async createAppointment(
+    @Body() appoimentsDto: CreateAppoimentsDto,
+    @Body('userId') userId: string,
+  ) {
+    return await this.adminService.createAppoiment(appoimentsDto, userId);
+  }
+
+  @Get('appoiments')
+  @Roles('admin')
+  async findAllAppointments() {
+    return await this.adminService.findAllAppoiments();
+  }
+
+  @Get('appoiments/:id')
+  @Roles('doctor', 'patient', 'admin')
+  async findAppoimentsById(
+    @Param('id') appoiments_id: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as RequestUser;
+    const userId = user.user_id;
+    const userRole = user.role;
+    return await this.adminService.findAppoimentsById(
+      appoiments_id,
+      userId,
+      userRole,
+    );
+  }
+
+  @Patch('appoiments/reschedule/:id')
+  @Roles('patient')
+  async reschedule(
+    @Param('id') id: string,
+    @Body('dateTime') newDateTime: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as RequestUser;
+    const patientId = user.user_id;
+    return await this.adminService.reschedule(id, newDateTime, patientId);
+  }
+  @Patch('appoiments/:id')
+  @Roles('admin')
+  async updateAppointment(
+    @Param('id') id: string,
+    @Body() updateAppoimentsDto: UpdateAppoimentsDto,
+  ) {
+    return await this.adminService.updateAppoiment(id, updateAppoimentsDto);
+  }
+
+  @Patch('appoiments/cancel/:id')
+  @Roles('admin')
+  async cancelAppointment(@Param('id') id: string) {
+    return await this.adminService.cancelAppoiment(id);
+  }
 }

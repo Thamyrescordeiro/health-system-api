@@ -102,7 +102,7 @@ export class AppoimentsService {
   async findById(
     appoiments_id: string,
     userId: string,
-    userRole: 'patient' | 'doctor',
+    userRole: 'patient' | 'doctor' | 'admin',
   ) {
     const appoiment = await this.appoimentsModel.findByPk(appoiments_id, {
       include: [Patient, Doctor],
@@ -229,32 +229,17 @@ export class AppoimentsService {
     return updatedAppoiment;
   }
 
-  async delete(
-    appoiments_id: string,
-    userId: string,
-    userRole: 'patient' | 'doctor',
-  ) {
+  async cancelAppoiment(appoiments_id: string) {
     const appoiment = await this.appoimentsModel.findByPk(appoiments_id);
     if (!appoiment) {
-      throw new HttpException('Appoiment not found', HttpStatus.NOT_FOUND);
+      throw new HttpException('Appointment not found', HttpStatus.NOT_FOUND);
     }
+    await this.appoimentsModel.update(
+      { status: AppointmentStatus.CANCELLED },
+      { where: { appoiments_id } },
+    );
 
-    if (userRole === 'patient' && appoiment.patient_id !== userId) {
-      throw new HttpException(
-        'You are not allowed to delete this appoiment',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    if (userRole === 'doctor' && appoiment.doctor_id !== userId) {
-      throw new HttpException(
-        'You are not allowed to delete this appoiment',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    await this.appoimentsModel.destroy({ where: { appoiments_id } });
-    return { message: 'Appoiment deleted successfully' };
+    return { message: 'Appointment cancelled successfully' };
   }
 
   async findAvailableByDoctor(doctor_id: string, date: string) {

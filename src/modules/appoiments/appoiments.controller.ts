@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -19,7 +18,7 @@ import { CreateAppoimentsDto } from './dtos/create-appoiments.dto';
 
 interface RequestUser {
   user_id: string;
-  role: 'patient' | 'doctor';
+  role: 'patient' | 'doctor' | 'admin';
 }
 
 @Controller('appoiments')
@@ -83,16 +82,6 @@ export class AppoimentsController {
   ) {
     return this.appoimentsService.findAvailableByDoctor(doctorId, date);
   }
-
-  @Delete('cancel/:id')
-  @Roles('patient', 'doctor')
-  async cancel(@Param('id') appoiments_id: string, @Req() req: Request) {
-    const user = req.user as RequestUser;
-    const userId = user.user_id;
-    const userRole = user.role;
-    return await this.appoimentsService.delete(appoiments_id, userId, userRole);
-  }
-
   @Patch('reschedule/:id')
   @Roles('patient')
   async reschedule(
@@ -103,5 +92,11 @@ export class AppoimentsController {
     const user = req.user as RequestUser;
     const patientId = user.user_id;
     return await this.appoimentsService.reschedule(id, newDateTime, patientId);
+  }
+
+  @Patch('appointments/cancel/:id')
+  @Roles('admin')
+  async cancelAppointment(@Param('id') id: string) {
+    return await this.appoimentsService.cancelAppoiment(id);
   }
 }

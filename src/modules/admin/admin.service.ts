@@ -15,6 +15,7 @@ import { EmailService } from 'src/Email/email.service';
 import { DoctorsService } from '../doctors/doctors.service';
 import { UpdateAppoimentsDto } from '../appoiments/dtos/update-appoiments.dto';
 import { AppoimentsService } from '../appoiments/appoiments.service';
+import { AppointmentStatus } from '../appoiments/dtos/types';
 @Injectable()
 export class AdminService {
   constructor(
@@ -234,7 +235,7 @@ export class AdminService {
   async findAppoimentsById(
     appoiments_id: string,
     userId: string,
-    userRole: 'patient' | 'doctor',
+    userRole: 'patient' | 'doctor' | 'admin',
   ) {
     const appoiment = await this.appoimentsModel.findByPk(appoiments_id, {
       include: [Patient, Doctor],
@@ -326,7 +327,10 @@ export class AdminService {
     return { message: 'Appointment rescheduled successfully' };
   }
 
-  async update(appoiments_id: string, updateData: UpdateAppoimentsDto) {
+  async updateAppoiment(
+    appoiments_id: string,
+    updateData: UpdateAppoimentsDto,
+  ) {
     const existingAppoiment =
       await this.appoimentsModel.findByPk(appoiments_id);
     if (!existingAppoiment) {
@@ -387,5 +391,18 @@ export class AdminService {
     );
 
     return availableSlots.filter((hour) => !takenHours.includes(hour));
+  }
+
+  async cancelAppoiment(appoiments_id: string) {
+    const appoiment = await this.appoimentsModel.findByPk(appoiments_id);
+    if (!appoiment) {
+      throw new HttpException('Appointment not found', HttpStatus.NOT_FOUND);
+    }
+    await this.appoimentsModel.update(
+      { status: AppointmentStatus.CANCELLED },
+      { where: { appoiments_id } },
+    );
+
+    return { message: 'Appointment cancelled successfully' };
   }
 }
