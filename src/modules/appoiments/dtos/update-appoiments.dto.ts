@@ -1,8 +1,9 @@
-import { IsOptional, IsUUID } from 'class-validator';
-import { AppointmentStatus } from './types';
+import { IsOptional, IsUUID, Validate } from 'class-validator';
+import { AppointmentStatus, IsFutureDateConstraint } from './types';
 
 export class UpdateAppoimentsDto {
   @IsOptional()
+  @Validate(IsFutureDateConstraint)
   dateTime?: string;
 
   @IsOptional()

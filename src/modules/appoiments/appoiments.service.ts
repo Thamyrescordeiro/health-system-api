@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Appoiments } from './appoiments.entity';
+import { Appoiments, UrgencyLevel } from './appoiments.entity';
 import { CreateAppoimentsDto } from './dtos/create-appoiments.dto';
 import { UpdateAppoimentsDto } from './dtos/update-appoiments.dto';
 import { PatientService } from '../patient/patient.service';
@@ -8,6 +8,9 @@ import { DoctorsService } from '../doctors/doctors.service';
 import { Patient } from '../patient/patient.entity';
 import { Doctor } from '../doctors/doctors.entity';
 import { EmailService } from '../../Email/email.service';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Op } from 'sequelize';
+import { AppointmentStatus } from './dtos/types';
 
 @Injectable()
 export class AppoimentsService {
@@ -30,6 +33,18 @@ export class AppoimentsService {
     if (!patientExists) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
+    const hasPending = await this.hasPendingAppointment(
+      patientExists.getDataValue('patient_id'),
+      doctor_id,
+    );
+
+    if (hasPending) {
+      throw new HttpException(
+        'You must complete your previous appointment with this doctor before booking a new one.',
+        HttpStatus.CONFLICT,
+      );
+    }
+
     const existingAppointment = await this.appoimentsModel.findOne({
       where: { doctor_id, dateTime },
     });
@@ -39,12 +54,18 @@ export class AppoimentsService {
         HttpStatus.CONFLICT,
       );
     }
+
+    let urgencyLevel: UrgencyLevel | null = null;
+    if (notes) {
+      urgencyLevel = await this.classifyUrgency(notes);
+    }
     const newAppointment = {
       patient_id: patientExists.getDataValue('patient_id'),
       doctor_id,
       dateTime,
       status,
       notes,
+      urgencyLevel,
     };
 
     const patientEmail = patientExists.user?.email;
@@ -262,5 +283,53 @@ export class AppoimentsService {
     );
 
     return availableSlots.filter((hour) => !takenHours.includes(hour));
+  }
+
+  async classifyUrgency(notes: string): Promise<UrgencyLevel> {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY environment variable is not set.');
+      }
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+      const prompt = `
+Você é um assistente médico especializado em triagem de urgências. 
+Classifique o nível de urgência de acordo com os sintomas abaixo em:
+
+- HIGH: risco imediato, precisa de atendimento urgente (ex: convulsão, dor no peito intensa, sangramento abundante)
+- MEDIUM: sintomas preocupantes, mas não emergenciais (ex: febre alta, dor moderada, infecção)
+- LOW: sintomas leves ou de rotina (ex: resfriado, pequenas dores)
+
+Nota do paciente: "${notes}"
+
+Retorne apenas HIGH, MEDIUM ou LOW.
+`;
+
+      const result = await model.generateContent(prompt);
+      const response = result.response.text().trim().toUpperCase();
+
+      if (response.includes('HIGH')) return UrgencyLevel.HIGH;
+      if (response.includes('MEDIUM')) return UrgencyLevel.MEDIUM;
+      return UrgencyLevel.LOW;
+    } catch (error) {
+      console.error('Erro ao classificar urgência:', error);
+      return UrgencyLevel.LOW;
+    }
+  }
+
+  async hasPendingAppointment(patientId: string, doctorId: string) {
+    const pendingAppointment = await this.appoimentsModel.findOne({
+      where: {
+        doctor_id: doctorId,
+        patient_id: patientId,
+        status: {
+          [Op.ne]: AppointmentStatus.COMPLETED,
+        },
+      },
+    });
+
+    return !!pendingAppointment;
   }
 }

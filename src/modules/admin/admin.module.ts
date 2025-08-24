@@ -6,6 +6,7 @@ import { AdminController } from './admin.controller';
 import { PatientModule } from '../patient/patient.module';
 import { DoctorsModule } from '../doctors/doctors.module';
 import { AppoimentsModule } from '../appoiments/appoiments.module';
+import { EmailModule } from 'src/Email/email.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AppoimentsModule } from '../appoiments/appoiments.module';
     PatientModule,
     DoctorsModule,
     AppoimentsModule,
+    EmailModule,
   ],
 
   providers: [AdminService],

@@ -6,6 +6,7 @@ import { PatientModule } from '../patient/patient.module';
 import { DoctorsModule } from '../doctors/doctors.module';
 import { AppoimentsController } from './appoiments.controller';
 import { EmailModule } from 'src/Email/email.module';
+import { AiService } from 'src/Gemini/ai/ai.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { EmailModule } from 'src/Email/email.module';
     DoctorsModule,
     EmailModule,
   ],
-  providers: [AppoimentsService],
+  providers: [AppoimentsService, AiService],
   controllers: [AppoimentsController],
   exports: [AppoimentsService, SequelizeModule],
 })

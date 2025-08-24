@@ -13,6 +13,12 @@ import {
 } from 'sequelize-typescript';
 import { AppointmentStatus } from './dtos/types';
 
+export enum UrgencyLevel {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+}
+
 @Table({ tableName: 'appoiments', timestamps: true })
 export class Appoiments extends Model<Appoiments, CreateAppoimentsDto> {
   @PrimaryKey
@@ -36,6 +42,12 @@ export class Appoiments extends Model<Appoiments, CreateAppoimentsDto> {
     type: DataType.STRING,
   })
   notes: string;
+
+  @Column({
+    type: DataType.ENUM(...Object.values(UrgencyLevel)),
+    allowNull: true,
+  })
+  urgencyLevel: UrgencyLevel;
 
   @ForeignKey(() => Patient)
   @Column({ type: DataType.UUID, allowNull: false })

@@ -13,6 +13,7 @@ import * as bcrypt from 'bcryptjs';
 
 import { CreateUserDto } from './dtos/create-user.dto';
 import { Patient } from '../patient/patient.entity';
+import { Doctor } from '../doctors/doctors.entity';
 
 @Table({ tableName: 'users', timestamps: true })
 export class User extends Model<User, CreateUserDto> {
@@ -30,6 +31,9 @@ export class User extends Model<User, CreateUserDto> {
 
   @Column({ type: DataType.STRING, allowNull: false })
   declare password: string;
+
+  @Column({ defaultValue: true })
+  declare active: boolean;
 
   @Column({
     type: DataType.ENUM('patient', 'doctor', 'admin'),
@@ -54,4 +58,7 @@ export class User extends Model<User, CreateUserDto> {
   }
   @HasOne(() => Patient)
   patient: Patient;
+
+  @HasOne(() => Doctor)
+  doctor: Doctor;
 }
