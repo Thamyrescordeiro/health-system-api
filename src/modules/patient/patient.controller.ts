@@ -31,7 +31,7 @@ export class PatientController {
   constructor(private readonly patientService: PatientService) {}
 
   @Post('create')
-  @Roles('doctor', 'patient')
+  @Roles('admin', 'patient')
   async create(@Body() patient: CreatePatientDto, @Req() req: Request) {
     const user = req.user as RequestUser;
     const userId = user.user_id;
@@ -58,7 +58,7 @@ export class PatientController {
   }
 
   @Get(':id')
-  @Roles('doctor', 'patient')
+  @Roles('admin', 'patient')
   async findById(@Param('id') id: string, @Req() req: Request) {
     const user = req.user as RequestUser;
 
@@ -77,7 +77,7 @@ export class PatientController {
   }
 
   @Patch('update/:id')
-  @Roles('doctor', 'patient')
+  @Roles('patient', 'admin')
   async update(
     @Param('id') patient_id: string,
     @Body() patient: UpdatePatientDto,

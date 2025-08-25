@@ -95,7 +95,7 @@ export class AppoimentsController {
   }
 
   @Patch('appointments/cancel/:id')
-  @Roles('admin')
+  @Roles('admin', 'patient')
   async cancelAppointment(@Param('id') id: string) {
     return await this.appoimentsService.cancelAppoiment(id);
   }
