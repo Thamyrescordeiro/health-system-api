@@ -16,6 +16,7 @@ import { DoctorsService } from '../doctors/doctors.service';
 import { UpdateAppoimentsDto } from '../appoiments/dtos/update-appoiments.dto';
 import { AppoimentsService } from '../appoiments/appoiments.service';
 import { AppointmentStatus } from '../appoiments/dtos/types';
+import { Op } from 'sequelize';
 @Injectable()
 export class AdminService {
   constructor(
@@ -404,5 +405,77 @@ export class AdminService {
     );
 
     return { message: 'Appointment cancelled successfully' };
+  }
+
+  async getAppoimentsStats() {
+    const today = new Date();
+
+    const startOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      0,
+      0,
+      0,
+    );
+    const endOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+    );
+
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+    );
+
+    type Stats = {
+      day: Record<string, number>;
+      week: Record<string, number>;
+      month: Record<string, number>;
+    };
+
+    const stats: Stats = {
+      day: {},
+      week: {},
+      month: {},
+    };
+
+    for (const status of Object.values(AppointmentStatus)) {
+      stats.day[status] = await this.appoimentsModel.count({
+        where: {
+          status,
+          dateTime: { [Op.between]: [startOfDay, endOfDay] },
+        },
+      });
+
+      stats.week[status] = await this.appoimentsModel.count({
+        where: {
+          status,
+          dateTime: { [Op.between]: [startOfWeek, endOfWeek] },
+        },
+      });
+
+      stats.month[status] = await this.appoimentsModel.count({
+        where: {
+          status,
+          dateTime: { [Op.between]: [startOfMonth, endOfMonth] },
+        },
+      });
+    }
+
+    return stats;
   }
 }

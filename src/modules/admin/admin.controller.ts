@@ -165,6 +165,11 @@ export class AdminController {
     return await this.adminService.createAppoiment(appoimentsDto, userId);
   }
 
+  @Get('appoiments/stats')
+  getAppoimentsStats() {
+    return this.adminService.getAppoimentsStats();
+  }
+
   @Get('appoiments')
   @Roles('admin')
   async findAllAppointments() {

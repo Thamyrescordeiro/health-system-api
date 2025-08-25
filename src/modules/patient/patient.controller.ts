@@ -52,7 +52,7 @@ export class PatientController {
   }
 
   @Get()
-  @Roles('doctor')
+  @Roles('admin')
   async findAll() {
     return await this.patientService.findAll();
   }
