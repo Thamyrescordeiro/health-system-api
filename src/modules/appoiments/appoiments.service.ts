@@ -20,22 +20,35 @@ export class AppoimentsService {
     private readonly patientService: PatientService,
     private readonly doctorsService: DoctorsService,
     private readonly emailService: EmailService,
+
+    @InjectModel(Patient) private readonly patientModel: typeof Patient,
   ) {}
 
-  async create(appoiment: CreateAppoimentsDto, userId: string) {
+  async create(
+    appoiment: CreateAppoimentsDto,
+    userId: string,
+    companyId: string,
+  ) {
     const { doctor_id, dateTime, status, notes } = appoiment;
 
-    const doctorExists = await this.doctorsService.findById(doctor_id);
+    const doctorExists = await this.doctorsService.findById(
+      doctor_id,
+      companyId,
+    );
     if (!doctorExists) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
-    const patientExists = await this.patientService.findByUserId(userId);
+    const patientExists = await this.patientService.findByUserId(
+      userId,
+      companyId,
+    );
     if (!patientExists) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
     const hasPending = await this.hasPendingAppointment(
       patientExists.getDataValue('patient_id'),
       doctor_id,
+      companyId,
     );
 
     if (hasPending) {
@@ -46,7 +59,7 @@ export class AppoimentsService {
     }
 
     const existingAppointment = await this.appoimentsModel.findOne({
-      where: { doctor_id, dateTime },
+      where: { doctor_id, dateTime, company_id: companyId },
     });
     if (existingAppointment) {
       throw new HttpException(
@@ -66,6 +79,7 @@ export class AppoimentsService {
       status,
       notes,
       urgencyLevel,
+      company_id: companyId,
     };
 
     const patientEmail = patientExists.user?.email;
@@ -93,8 +107,9 @@ export class AppoimentsService {
     return await this.appoimentsModel.create(newAppointment);
   }
 
-  async findAll() {
+  async findAll(companyId: string) {
     return this.appoimentsModel.findAll({
+      where: { company_id: companyId },
       include: [Patient, Doctor],
     });
   }
@@ -102,9 +117,11 @@ export class AppoimentsService {
   async findById(
     appoiments_id: string,
     userId: string,
+    companyId: string,
     userRole: 'patient' | 'doctor' | 'admin',
   ) {
-    const appoiment = await this.appoimentsModel.findByPk(appoiments_id, {
+    const appoiment = await this.appoimentsModel.findOne({
+      where: { appoiments_id, company_id: companyId },
       include: [Patient, Doctor],
     });
     if (!appoiment) {
@@ -128,34 +145,34 @@ export class AppoimentsService {
     return appoiment;
   }
 
-  async findByDate(date: string) {
+  async findByDate(date: string, companyId: string) {
     return this.appoimentsModel.findAll({
-      where: { dateTime: date },
+      where: { dateTime: date, company_id: companyId },
       include: [Patient, Doctor],
     });
   }
 
-  async findByDoctor(doctor_id: string) {
+  async findByDoctor(doctor_id: string, companyId: string) {
     return this.appoimentsModel.findAll({
-      where: { doctor_id },
+      where: { doctor_id, company_id: companyId },
       include: [Patient, Doctor],
     });
   }
 
-  async findByPatient(patientId: string) {
+  async findByPatient(patientId: string, companyId: string) {
     return this.appoimentsModel.findAll({
-      where: { patient_id: patientId },
+      where: { patient_id: patientId, company_id: companyId },
       include: [Doctor],
     });
   }
 
-  async findByCpf(cpf: string) {
-    const patient = await this.patientService.findByCpf(cpf);
+  async findByCpf(cpf: string, companyId: string) {
+    const patient = await this.patientService.findByCpf(cpf, companyId);
     if (!patient) {
       return [];
     }
     return this.appoimentsModel.findAll({
-      where: { patient_id: patient.patient_id },
+      where: { patient_id: patient.patient_id, company_id: companyId },
       include: [Patient, Doctor],
     });
   }
@@ -164,10 +181,12 @@ export class AppoimentsService {
     appoiments_id: string,
     newDateTime: string,
     patientId: string,
+    companyId: string,
   ) {
     const appointment = await this.findById(
       appoiments_id,
       patientId,
+      companyId,
       'patient',
     );
 
@@ -189,14 +208,19 @@ export class AppoimentsService {
 
     await this.appoimentsModel.update(
       { dateTime: newDateTime },
-      { where: { appoiments_id } },
+      { where: { appoiments_id, company_id: companyId } },
     );
     return { message: 'Appointment rescheduled successfully' };
   }
 
-  async update(appoiments_id: string, updateData: UpdateAppoimentsDto) {
-    const existingAppoiment =
-      await this.appoimentsModel.findByPk(appoiments_id);
+  async update(
+    appoiments_id: string,
+    updateData: UpdateAppoimentsDto,
+    companyId: string,
+  ) {
+    const existingAppoiment = await this.appoimentsModel.findOne({
+      where: { appoiments_id, company_id: companyId },
+    });
     if (!existingAppoiment) {
       throw new HttpException('Appoiment not found', HttpStatus.NOT_FOUND);
     }
@@ -204,6 +228,7 @@ export class AppoimentsService {
     if (updateData.patient_id) {
       const patientExists = await this.patientService.patientExists(
         updateData.patient_id,
+        companyId,
       );
       if (!patientExists) {
         throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
@@ -213,42 +238,50 @@ export class AppoimentsService {
     if (updateData.doctor_id) {
       const doctorExists = await this.doctorsService.findById(
         updateData.doctor_id,
+        companyId,
       );
       if (!doctorExists) {
         throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
       }
     }
 
-    await this.appoimentsModel.update(updateData, { where: { appoiments_id } });
-    const updatedAppoiment = await this.appoimentsModel.findByPk(
-      appoiments_id,
-      {
-        include: [Patient, Doctor],
-      },
-    );
+    await this.appoimentsModel.update(updateData, {
+      where: { appoiments_id, company_id: companyId },
+    });
+    const updatedAppoiment = await this.appoimentsModel.findOne({
+      where: { appoiments_id, company_id: companyId },
+      include: [Patient, Doctor],
+    });
     return updatedAppoiment;
   }
 
-  async cancelAppoiment(appoiments_id: string) {
-    const appoiment = await this.appoimentsModel.findByPk(appoiments_id);
+  async cancelAppoiment(appoiments_id: string, companyId: string) {
+    const appoiment = await this.appoimentsModel.findOne({
+      where: { appoiments_id, company_id: companyId },
+    });
     if (!appoiment) {
       throw new HttpException('Appointment not found', HttpStatus.NOT_FOUND);
     }
     await this.appoimentsModel.update(
       { status: AppointmentStatus.CANCELLED },
-      { where: { appoiments_id } },
+      { where: { appoiments_id, company_id: companyId } },
     );
 
     return { message: 'Appointment cancelled successfully' };
   }
 
-  async findAvailableByDoctor(doctor_id: string, date: string) {
+  async findAvailableByDoctor(
+    doctor_id: string,
+    date: string,
+    companyId: string,
+  ) {
     const startDay = new Date(date + 'T00:00:00');
     const endDay = new Date(date + 'T23:59:59');
 
     const appointments = await this.appoimentsModel.findAll({
       where: {
         doctor_id,
+        company_id: companyId,
         dateTime: {
           $between: [startDay, endDay],
         },
@@ -304,11 +337,16 @@ Retorne apenas HIGH, MEDIUM ou LOW.
     }
   }
 
-  async hasPendingAppointment(patientId: string, doctorId: string) {
+  async hasPendingAppointment(
+    patientId: string,
+    doctorId: string,
+    companyId: string,
+  ) {
     const pendingAppointment = await this.appoimentsModel.findOne({
       where: {
         doctor_id: doctorId,
         patient_id: patientId,
+        company_id: companyId,
         status: {
           [Op.ne]: AppointmentStatus.COMPLETED,
         },

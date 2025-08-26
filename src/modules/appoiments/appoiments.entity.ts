@@ -2,6 +2,7 @@ import { Model } from 'sequelize-typescript';
 import { CreateAppoimentsDto } from './dtos/create-appoiments.dto';
 import { Patient } from '../patient/patient.entity';
 import { Doctor } from '../doctors/doctors.entity';
+import { Company } from '../Company/company.entity';
 import {
   BelongsTo,
   Column,
@@ -48,6 +49,13 @@ export class Appoiments extends Model<Appoiments, CreateAppoimentsDto> {
     allowNull: true,
   })
   urgencyLevel: UrgencyLevel;
+
+  @ForeignKey(() => Company)
+  @Column(DataType.UUID)
+  company_id: string;
+
+  @BelongsTo(() => Company)
+  company: Company;
 
   @ForeignKey(() => Patient)
   @Column({ type: DataType.UUID, allowNull: false })

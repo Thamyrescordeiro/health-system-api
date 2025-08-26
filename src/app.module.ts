@@ -9,6 +9,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { EmailService } from './Email/email.service';
 import { EmailModule } from './Email/email.module';
 import { AiModule } from './Gemini/ai/ai.module';
+import { CompanyModule } from './modules/Company/company.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AiModule } from './Gemini/ai/ai.module';
     AdminModule,
     EmailModule,
     AiModule,
+    CompanyModule,
   ],
   controllers: [],
   providers: [EmailService],

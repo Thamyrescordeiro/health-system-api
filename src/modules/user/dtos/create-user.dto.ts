@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -21,7 +22,10 @@ export class CreateUserDto {
   @IsOptional()
   active?: boolean;
 
+  @IsUUID()
+  company_id: string;
+
   @IsString()
-  @IsIn(['doctor', 'patient', 'admin'])
-  role: 'doctor' | 'patient' | 'admin';
+  @IsIn(['doctor', 'patient', 'admin', 'super_admin'])
+  role: 'doctor' | 'patient' | 'admin' | 'super_admin';
 }

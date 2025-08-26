@@ -10,6 +10,7 @@ import {
 } from 'sequelize-typescript';
 import { CreateDoctorDto } from './dtos/create-doctors.dto';
 import { User } from '../user/user.entity';
+import { Company } from '../Company/company.entity';
 
 @Table({ tableName: 'doctors', timestamps: true })
 export class Doctor extends Model<Doctor, CreateDoctorDto> {
@@ -60,6 +61,13 @@ export class Doctor extends Model<Doctor, CreateDoctorDto> {
     type: DataType.BOOLEAN,
   })
   declare active: boolean;
+
+  @ForeignKey(() => Company)
+  @Column({ type: DataType.UUID, allowNull: false })
+  company_id: string;
+
+  @BelongsTo(() => Company)
+  company: Company;
 
   @ForeignKey(() => User)
   @Column(DataType.UUID)

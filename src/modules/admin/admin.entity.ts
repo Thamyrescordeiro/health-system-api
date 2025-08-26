@@ -10,6 +10,7 @@ import {
 } from 'sequelize-typescript';
 import { User } from '../user/user.entity';
 import { CreateAdminDto } from './dtos/create-admin.dto';
+import { Company } from '../Company/company.entity';
 
 @Table({ tableName: 'admin', timestamps: true })
 export class Admin extends Model<Admin, CreateAdminDto> {
@@ -33,6 +34,7 @@ export class Admin extends Model<Admin, CreateAdminDto> {
   @Column({
     type: DataType.STRING,
     allowNull: false,
+    unique: true,
   })
   declare cpf: string;
 
@@ -47,6 +49,13 @@ export class Admin extends Model<Admin, CreateAdminDto> {
     type: DataType.BOOLEAN,
   })
   declare active: boolean;
+
+  @ForeignKey(() => Company)
+  @Column({ type: DataType.UUID, allowNull: false })
+  company_id: string;
+
+  @BelongsTo(() => Company)
+  company: Company;
 
   @ForeignKey(() => User)
   @Column(DataType.UUID)

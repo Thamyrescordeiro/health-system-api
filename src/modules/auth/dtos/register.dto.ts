@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsObject,
   IsString,
+  IsUUID,
   ValidateNested,
 } from 'class-validator';
 import { CreateDoctorDto } from 'src/modules/doctors/dtos/create-doctors.dto';
@@ -18,6 +19,9 @@ export class RegisterDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+
+  @IsUUID()
+  company_id: string;
 
   @IsIn(['doctor', 'patient', 'admin'])
   role: 'doctor' | 'patient' | 'admin';

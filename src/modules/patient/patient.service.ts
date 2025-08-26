@@ -1,27 +1,22 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Patient } from './patient.entity';
-import { CreatePatientDto } from './dtos/create-patient.dto';
 import { UpdatePatientDto } from './dtos/update-patient.dto';
-import { User } from '../user/user.entity'; // Import User model
+import { User } from '../user/user.entity';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class PatientService {
   constructor(
     @InjectModel(Patient) private readonly patientModel: typeof Patient,
-    @InjectModel(User) private readonly userModel: typeof User, // Inject User model
+    @InjectModel(User) private readonly userModel: typeof User,
+    private readonly authService: AuthService,
   ) {}
 
-  async create(patient: CreatePatientDto & { user_id: string }) {
-    await this.validateCpf(patient.cpf);
-    this.validateBirthDate(patient.birthDate);
-
-    const createdPatient = await this.patientModel.create(patient);
-    return createdPatient;
-  }
-
-  async validateCpf(cpf: string, excludePatientId?: string) {
-    const existing = await this.patientModel.findOne({ where: { cpf } });
+  async validateCpf(cpf: string, companyId: string, excludePatientId?: string) {
+    const existing = await this.patientModel.findOne({
+      where: { cpf, company_id: companyId },
+    });
 
     if (existing && existing.patient_id !== excludePatientId) {
       throw new HttpException('CPF already exists', HttpStatus.BAD_REQUEST);
@@ -29,14 +24,17 @@ export class PatientService {
     return true;
   }
 
-  async findByUserId(userId: string) {
+  async findByUserId(userId: string, companyId: string) {
     return await this.patientModel.findOne({
-      where: { user_id: userId },
+      where: { user_id: userId, company_id: companyId },
       include: [{ model: this.userModel, attributes: ['email'] }],
     });
   }
-  async findByCpf(cpf: string) {
-    return await this.patientModel.findOne({ where: { cpf } });
+
+  async findByCpf(cpf: string, companyId: string) {
+    return await this.patientModel.findOne({
+      where: { cpf, company_id: companyId },
+    });
   }
 
   validateBirthDate(birthDate: string) {
@@ -54,22 +52,28 @@ export class PatientService {
     }
   }
 
-  async findAll() {
-    return this.patientModel.findAll();
+  async findAll(companyId: string) {
+    return this.patientModel.findAll({ where: { company_id: companyId } });
   }
 
-  async findById(patient_id: string) {
-    return this.patientModel.findByPk(patient_id);
+  async findById(patient_id: string, companyId: string) {
+    return this.patientModel.findOne({
+      where: { patient_id, company_id: companyId },
+    });
   }
 
-  async update(patient_id: string, patient: UpdatePatientDto) {
-    const existingPatient = await this.findById(patient_id);
+  async update(
+    patient_id: string,
+    patient: UpdatePatientDto,
+    companyId: string,
+  ) {
+    const existingPatient = await this.findById(patient_id, companyId);
     if (!existingPatient) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
 
     if (patient.cpf && patient.cpf !== existingPatient.cpf) {
-      await this.validateCpf(patient.cpf, patient_id);
+      await this.validateCpf(patient.cpf, companyId, patient_id);
     }
 
     if (patient.birthDate) {
@@ -77,36 +81,28 @@ export class PatientService {
     }
 
     await this.patientModel.update(patient, {
-      where: { patient_id: patient_id },
+      where: { patient_id, company_id: companyId },
     });
-    const updatedPatient = await this.findById(patient_id);
+
+    const updatedPatient = await this.findById(patient_id, companyId);
     return updatedPatient;
   }
 
-  async delete(
-    patient_id: string,
-    userId: string,
-    userRole: 'patient' | 'doctor',
-  ) {
-    const patient = await this.findById(patient_id);
-
+  async desactivePatient(patient_id: string, companyId: string) {
+    const patient = await this.findById(patient_id, companyId);
     if (!patient) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
 
-    if (userRole === 'patient' && patient.user_id !== userId) {
-      throw new HttpException(
-        'You are not allowed to delete this patient record',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    await this.patientModel.destroy({ where: { patient_id: patient_id } });
-    return { message: 'Patient deleted successfully' };
+    await this.patientModel.update(
+      { active: false },
+      { where: { patient_id, company_id: companyId } },
+    );
+    return { message: 'Patient deactivated successfully' };
   }
 
-  async patientExists(id: string): Promise<boolean> {
-    const patient = await this.findById(id);
+  async patientExists(patient_id: string, companyId: string): Promise<boolean> {
+    const patient = await this.findById(patient_id, companyId);
     return !!patient;
   }
 }

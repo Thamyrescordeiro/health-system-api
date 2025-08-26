@@ -8,12 +8,15 @@ import {
   BeforeCreate,
   BeforeUpdate,
   HasOne,
+  ForeignKey,
+  BelongsTo,
 } from 'sequelize-typescript';
 import * as bcrypt from 'bcryptjs';
 
 import { CreateUserDto } from './dtos/create-user.dto';
 import { Patient } from '../patient/patient.entity';
 import { Doctor } from '../doctors/doctors.entity';
+import { Company } from '../Company/company.entity';
 
 @Table({ tableName: 'users', timestamps: true })
 export class User extends Model<User, CreateUserDto> {
@@ -35,11 +38,30 @@ export class User extends Model<User, CreateUserDto> {
   @Column({ defaultValue: true })
   declare active: boolean;
 
+  @Column({ allowNull: true })
+  reset_code: string;
+
+  @Column({ type: DataType.DATE, allowNull: true })
+  reset_code_expires_at: Date;
+
+  @Column({ defaultValue: false })
+  reset_code_used: boolean;
+
+  @Column({ type: DataType.DATE, allowNull: true })
+  last_reset_request_at?: Date;
+
   @Column({
-    type: DataType.ENUM('patient', 'doctor', 'admin'),
+    type: DataType.ENUM('patient', 'doctor', 'admin', 'super_admin'),
     allowNull: false,
   })
-  declare role: 'patient' | 'doctor' | 'admin';
+  declare role: 'patient' | 'doctor' | 'admin' | 'super_admin';
+
+  @ForeignKey(() => Company)
+  @Column({ type: DataType.UUID, allowNull: true })
+  declare company_id?: string;
+
+  @BelongsTo(() => Company)
+  company: Company;
 
   @BeforeCreate
   @BeforeUpdate

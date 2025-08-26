@@ -1,11 +1,9 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
-  Post,
   UseGuards,
   Req,
   ForbiddenException,
@@ -13,7 +11,6 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { PatientService } from './patient.service';
-import { CreatePatientDto } from './dtos/create-patient.dto';
 import { UpdatePatientDto } from './dtos/update-patient.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -23,6 +20,7 @@ import { Request } from 'express';
 interface RequestUser {
   user_id: string;
   role: 'patient' | 'doctor';
+  company_id: string;
 }
 
 @Controller('patient')
@@ -30,19 +28,14 @@ interface RequestUser {
 export class PatientController {
   constructor(private readonly patientService: PatientService) {}
 
-  @Post('create')
-  @Roles('admin', 'patient')
-  async create(@Body() patient: CreatePatientDto, @Req() req: Request) {
-    const user = req.user as RequestUser;
-    const userId = user.user_id;
-    return await this.patientService.create({ ...patient, user_id: userId });
-  }
-
   @Get('me')
   @Roles('patient')
   async getMe(@Req() req: Request) {
     const user = req.user as RequestUser;
-    const patient = await this.patientService.findByUserId(user.user_id);
+    const patient = await this.patientService.findByUserId(
+      user.user_id,
+      user.company_id,
+    );
 
     if (!patient) {
       throw new HttpException('Patient record not found', HttpStatus.NOT_FOUND);
@@ -53,8 +46,9 @@ export class PatientController {
 
   @Get()
   @Roles('admin')
-  async findAll() {
-    return await this.patientService.findAll();
+  async findAll(@Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.patientService.findAll(user.company_id);
   }
 
   @Get(':id')
@@ -62,7 +56,7 @@ export class PatientController {
   async findById(@Param('id') id: string, @Req() req: Request) {
     const user = req.user as RequestUser;
 
-    const patient = await this.patientService.findById(id);
+    const patient = await this.patientService.findById(id, user.company_id);
     if (!patient) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
@@ -81,17 +75,23 @@ export class PatientController {
   async update(
     @Param('id') patient_id: string,
     @Body() patient: UpdatePatientDto,
+    @Req() req: Request,
   ) {
-    return await this.patientService.update(patient_id, patient);
+    const user = req.user as RequestUser;
+    return await this.patientService.update(
+      patient_id,
+      patient,
+      user.company_id,
+    );
   }
 
-  @Delete('delete/:id')
-  @Roles('doctor', 'patient')
-  async delete(@Param('id') patient_id: string, @Req() req: Request) {
+  @Patch('desactive/:id')
+  @Roles('patient', 'admin')
+  async desactive(@Param('id') patient_id: string, @Req() req: Request) {
     const user = req.user as RequestUser;
-    const userId = user.user_id;
-    const userRole = user.role;
-
-    return await this.patientService.delete(patient_id, userId, userRole);
+    return await this.patientService.desactivePatient(
+      patient_id,
+      user.company_id,
+    );
   }
 }

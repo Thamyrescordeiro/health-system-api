@@ -10,6 +10,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Doctor } from '../doctors/doctors.entity';
 import { Patient } from '../patient/patient.entity';
 import { Admin } from '../admin/admin.entity';
+import { Company } from '../Company/company.entity';
+import { EmailModule } from 'src/Email/email.module';
 
 @Module({
   imports: [
@@ -23,7 +25,8 @@ import { Admin } from '../admin/admin.entity';
       }),
       inject: [ConfigService],
     }),
-    SequelizeModule.forFeature([User, Doctor, Patient, Admin]),
+    SequelizeModule.forFeature([User, Doctor, Patient, Admin, Company]),
+    EmailModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

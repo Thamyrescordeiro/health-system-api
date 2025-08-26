@@ -7,6 +7,8 @@ import { PatientModule } from '../patient/patient.module';
 import { DoctorsModule } from '../doctors/doctors.module';
 import { AppoimentsModule } from '../appoiments/appoiments.module';
 import { EmailModule } from 'src/Email/email.module';
+import { CompanyModule } from '../Company/company.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { EmailModule } from 'src/Email/email.module';
     DoctorsModule,
     AppoimentsModule,
     EmailModule,
+    CompanyModule,
+    UserModule,
   ],
 
   providers: [AdminService],

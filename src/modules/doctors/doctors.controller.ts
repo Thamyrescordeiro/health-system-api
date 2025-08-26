@@ -1,17 +1,14 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
-  Post,
   UseGuards,
   Req,
 } from '@nestjs/common';
 import { DoctorsService } from './doctors.service';
 import { PatientService } from '../patient/patient.service';
-import { CreateDoctorDto } from './dtos/create-doctors.dto';
 import { UpdateDoctorDto } from './dtos/update-doctors.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -20,7 +17,8 @@ import { Request } from 'express';
 
 interface RequestUser {
   user_id: string;
-  role: 'patient' | 'doctor';
+  role: 'patient' | 'doctor' | 'admin';
+  company_id: string;
 }
 
 @Controller('doctor')
@@ -31,40 +29,42 @@ export class DoctorsController {
     private readonly patientService: PatientService,
   ) {}
 
-  @Post('create')
-  @Roles('doctor', 'admin')
-  async create(@Body() doctor: CreateDoctorDto, @Req() req: Request) {
-    const user = req.user as RequestUser;
-    const userId = user.user_id;
-    return await this.doctorService.create({ ...doctor, user_id: userId });
-  }
-
   @Get()
   @Roles('doctor', 'admin')
-  async findAll() {
-    return await this.doctorService.findAll();
+  async findAll(@Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.doctorService.findAll(user.company_id);
   }
 
   @Get('by-crm/:crm')
   @Roles('doctor', 'admin')
-  async findByCrm(@Param('crm') crm: string) {
-    return await this.doctorService.findByCrm(crm);
+  async findByCrm(@Param('crm') crm: string, @Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.doctorService.findByCrm(crm, user.company_id);
   }
 
   @Get('by-id/:id')
   @Roles('doctor', 'admin')
-  async findById(@Param('id') doctor_id: string) {
-    return await this.doctorService.findById(doctor_id);
+  async findById(@Param('id') doctor_id: string, @Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.doctorService.findById(doctor_id, user.company_id);
   }
 
   @Get('by-specialty/:specialty')
   @Roles('doctor', 'patient', 'admin')
-  async findBySpecialty(@Param('specialty') specialty: string) {
-    return await this.doctorService.findBySpecialty(specialty);
+  async findBySpecialty(
+    @Param('specialty') specialty: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as RequestUser;
+    return await this.doctorService.findBySpecialty(specialty, user.company_id);
   }
+
   @Get('specialties')
-  async getSpecialties() {
-    return this.doctorService.findAllSpecialties();
+  @Roles('doctor', 'patient', 'admin')
+  async getSpecialties(@Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.doctorService.findAllSpecialties(user.company_id);
   }
 
   @Patch('update/:id')
@@ -72,16 +72,16 @@ export class DoctorsController {
   async update(
     @Param('id') doctor_id: string,
     @Body() doctor: UpdateDoctorDto,
+    @Req() req: Request,
   ) {
-    return await this.doctorService.update(doctor_id, doctor);
+    const user = req.user as RequestUser;
+    return await this.doctorService.update(doctor_id, doctor, user.company_id);
   }
 
-  @Delete('delete/:id')
+  @Patch('deactivate/:id')
   @Roles('doctor', 'admin')
-  async delete(@Param('id') doctor_id: string, @Req() req: Request) {
+  async deactivate(@Param('id') doctor_id: string, @Req() req: Request) {
     const user = req.user as RequestUser;
-    const userId = user.user_id;
-    const userRole = user.role;
-    return await this.doctorService.delete(doctor_id, userId, userRole);
+    return await this.doctorService.desactiveDoctor(doctor_id, user.company_id);
   }
 }

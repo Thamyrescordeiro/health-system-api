@@ -19,6 +19,7 @@ import { CreateAppoimentsDto } from './dtos/create-appoiments.dto';
 interface RequestUser {
   user_id: string;
   role: 'patient' | 'doctor' | 'admin';
+  company_id: string;
 }
 
 @Controller('appoiments')
@@ -30,48 +31,57 @@ export class AppoimentsController {
   @Roles('patient')
   async create(@Body() appoiment: CreateAppoimentsDto, @Req() req: Request) {
     const user = req.user as RequestUser;
-    return await this.appoimentsService.create(appoiment, user.user_id);
+    return await this.appoimentsService.create(
+      appoiment,
+      user.user_id,
+      user.company_id,
+    );
   }
 
   @Get(':id')
   @Roles('doctor', 'patient', 'admin')
   async findById(@Param('id') appoiments_id: string, @Req() req: Request) {
     const user = req.user as RequestUser;
-    const userId = user.user_id;
-    const userRole = user.role;
     return await this.appoimentsService.findById(
       appoiments_id,
-      userId,
-      userRole,
+      user.user_id,
+      user.company_id,
+      user.role,
     );
   }
 
   @Get('by-date/:date')
   @Roles('doctor', 'patient', 'admin')
-  async findByDate(@Param('date') date: string) {
-    return await this.appoimentsService.findByDate(date);
+  async findByDate(@Param('date') date: string, @Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.appoimentsService.findByDate(date, user.company_id);
   }
 
   @Get('by-cpf/:cpf')
   @Roles('doctor', 'admin')
-  async findByCpf(@Param('cpf') cpf: string) {
-    return await this.appoimentsService.findByCpf(cpf);
+  async findByCpf(@Param('cpf') cpf: string, @Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.appoimentsService.findByCpf(cpf, user.company_id);
   }
 
   @Get('my-appoiments')
   @Roles('patient', 'admin')
   async findMyPatientAppoiments(@Req() req: Request) {
     const user = req.user as RequestUser;
-    const patientId = user.user_id;
-    return await this.appoimentsService.findByPatient(patientId);
+    return await this.appoimentsService.findByPatient(
+      user.user_id,
+      user.company_id,
+    );
   }
 
   @Get('my-doctor-appoiments')
   @Roles('doctor', 'admin')
   async findMyDoctorAppoiments(@Req() req: Request) {
     const user = req.user as RequestUser;
-    const doctorId = user.user_id;
-    return await this.appoimentsService.findByDoctor(doctorId);
+    return await this.appoimentsService.findByDoctor(
+      user.user_id,
+      user.company_id,
+    );
   }
 
   @Get('doctors/:id/availability')
@@ -79,9 +89,16 @@ export class AppoimentsController {
   async getDoctorAvailability(
     @Param('id') doctorId: string,
     @Query('date') date: string,
+    @Req() req: Request,
   ) {
-    return this.appoimentsService.findAvailableByDoctor(doctorId, date);
+    const user = req.user as RequestUser;
+    return this.appoimentsService.findAvailableByDoctor(
+      doctorId,
+      date,
+      user.company_id,
+    );
   }
+
   @Patch('reschedule/:id')
   @Roles('patient')
   async reschedule(
@@ -90,13 +107,18 @@ export class AppoimentsController {
     @Req() req: Request,
   ) {
     const user = req.user as RequestUser;
-    const patientId = user.user_id;
-    return await this.appoimentsService.reschedule(id, newDateTime, patientId);
+    return await this.appoimentsService.reschedule(
+      id,
+      newDateTime,
+      user.user_id,
+      user.company_id,
+    );
   }
 
   @Patch('appointments/cancel/:id')
   @Roles('admin', 'patient')
-  async cancelAppointment(@Param('id') id: string) {
-    return await this.appoimentsService.cancelAppoiment(id);
+  async cancelAppointment(@Param('id') id: string, @Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.appoimentsService.cancelAppoiment(id, user.company_id);
   }
 }

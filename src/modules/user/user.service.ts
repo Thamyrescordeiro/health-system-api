@@ -5,6 +5,7 @@ import { CreateUserDto } from './dtos/create-user.dto';
 import { Patient } from '../patient/patient.entity';
 import { Doctor } from '../doctors/doctors.entity';
 import { Admin } from '../admin/admin.entity';
+import { UpdateUser } from './dtos/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -35,15 +36,15 @@ export class UserService {
     return this.userModel.findByPk(user_id);
   }
 
-  // async update(userId: string, updateData: Partial<UpdateUserDto>) {
-  //   const user = await this.userModel.findByPk(userId);
-  //   if (!user) {
-  //     throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-  //   }
+  async update(userId: string, updateData: Partial<UpdateUser>) {
+    const user = await this.userModel.findByPk(userId);
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
 
-  //   await user.update(updateData);
-  //   return user;
-  // }
+    await user.update(updateData);
+    return user;
+  }
 
   async deactivateUser(userId: string) {
     const user = await this.userModel.findByPk(userId, {

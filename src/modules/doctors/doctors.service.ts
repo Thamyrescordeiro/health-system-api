@@ -1,7 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Doctor } from './doctors.entity';
-import { CreateDoctorDto } from './dtos/create-doctors.dto';
 import { UpdateDoctorDto } from './dtos/update-doctors.dto';
 import { User } from '../user/user.entity';
 
@@ -12,30 +11,24 @@ export class DoctorsService {
     @InjectModel(User) private readonly userModel: typeof User,
   ) {}
 
-  async create(doctor: CreateDoctorDto & { user_id: string }) {
-    await this.validateCrm(doctor.crm);
-
-    this.validateBirthDate(doctor.birthDate);
-
-    const user = await this.userModel.findByPk(doctor.user_id);
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
-    }
-
-    const createDoctor = await this.doctorModel.create(doctor);
-    return createDoctor;
-  }
-
-  async validateEmail(email: string, excludeUserId?: string) {
-    const existingUser = await this.userModel.findOne({ where: { email } });
+  async validateEmail(
+    email: string,
+    excludeUserId?: string,
+    companyId?: string,
+  ) {
+    const existingUser = await this.userModel.findOne({
+      where: { email, company_id: companyId },
+    });
     if (existingUser && existingUser.user_id !== excludeUserId) {
       throw new HttpException('Email already exists', HttpStatus.BAD_REQUEST);
     }
     return true;
   }
 
-  async validateCrm(crm: string, excludeDoctorId?: string) {
-    const existing = await this.doctorModel.findOne({ where: { crm } });
+  async validateCrm(crm: string, companyId: string, excludeDoctorId?: string) {
+    const existing = await this.doctorModel.findOne({
+      where: { crm, company_id: companyId },
+    });
     if (existing && existing.doctor_id !== excludeDoctorId) {
       throw new HttpException('CRM already exists', HttpStatus.BAD_REQUEST);
     }
@@ -56,8 +49,8 @@ export class DoctorsService {
     }
   }
 
-  async update(doctor_id: string, doctor: UpdateDoctorDto) {
-    const existingDoctor = await this.findById(doctor_id);
+  async update(doctor_id: string, doctor: UpdateDoctorDto, companyId: string) {
+    const existingDoctor = await this.findById(doctor_id, companyId);
     if (!existingDoctor) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
@@ -70,54 +63,56 @@ export class DoctorsService {
       this.validateBirthDate(doctor.birthDate);
     }
 
-    await this.doctorModel.update(doctor, { where: { doctor_id } });
-    const updatedDoctor = await this.findById(doctor_id);
+    await this.doctorModel.update(doctor, {
+      where: { doctor_id, company_id: companyId },
+    });
+    const updatedDoctor = await this.findById(doctor_id, companyId);
     return updatedDoctor;
   }
 
-  async findAll() {
-    return await this.doctorModel.findAll({ include: [User] });
-  }
-
-  async findById(doctor_id: string) {
-    return await this.doctorModel.findByPk(doctor_id, { include: [User] });
-  }
-
-  async findByCrm(crm: string) {
-    return await this.doctorModel.findOne({ where: { crm }, include: [User] });
-  }
-
-  async findBySpecialty(specialty: string) {
+  async findAll(companyId: string) {
     return await this.doctorModel.findAll({
-      where: { specialty },
+      where: { company_id: companyId },
       include: [User],
     });
   }
 
-  async findAllSpecialties() {
-    const doctors = await this.doctorModel.findAll();
+  async findById(doctor_id: string, companyId: string) {
+    return await this.doctorModel.findOne({
+      where: { doctor_id, company_id: companyId },
+      include: [User],
+    });
+  }
+
+  async findByCrm(crm: string, companyId: string) {
+    return await this.doctorModel.findOne({
+      where: { crm, company_id: companyId },
+      include: [User],
+    });
+  }
+
+  async findBySpecialty(specialty: string, companyId: string) {
+    return await this.doctorModel.findAll({
+      where: { specialty, company_id: companyId },
+      include: [User],
+    });
+  }
+
+  async findAllSpecialties(companyId: string) {
+    const doctors = await this.doctorModel.findAll({
+      where: { company_id: companyId },
+    });
     return [...new Set(doctors.map((d) => d.specialty))];
   }
 
-  async delete(
-    doctor_id: string,
-    userId: string,
-    userRole: 'patient' | 'doctor' | 'admin',
-  ) {
-    const doctor = await this.findById(doctor_id);
-
+  async desactiveDoctor(doctor_id: string, companyId: string) {
+    const doctor = await this.findById(doctor_id, companyId);
     if (!doctor) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
 
-    if (userRole === 'doctor' && doctor.user_id !== userId) {
-      throw new HttpException(
-        'You are not allowed to delete this doctor record',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    await this.doctorModel.destroy({ where: { doctor_id } });
-    return { message: 'Doctor deleted successfully' };
+    doctor.active = false;
+    await doctor.save();
+    return { message: 'Doctor deactivated successfully' };
   }
 }

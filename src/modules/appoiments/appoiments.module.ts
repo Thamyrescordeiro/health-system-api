@@ -7,7 +7,6 @@ import { DoctorsModule } from '../doctors/doctors.module';
 import { AppoimentsController } from './appoiments.controller';
 import { EmailModule } from 'src/Email/email.module';
 import { AiService } from 'src/Gemini/ai/ai.service';
-
 @Module({
   imports: [
     SequelizeModule.forFeature([Appoiments]),
