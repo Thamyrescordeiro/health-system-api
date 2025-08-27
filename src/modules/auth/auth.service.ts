@@ -231,35 +231,31 @@ export class AuthService {
   }
   async sendPasswordResetCode(email: string) {
     const user = await this.userModel.findOne({ where: { email } });
+
     if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
 
     const now = new Date();
 
     if (
-      user.reset_code &&
-      !user.reset_code_used &&
-      user.reset_code_expires_at &&
-      user.reset_code_expires_at > now
+      user.last_reset_request_at &&
+      now.getTime() - user.last_reset_request_at.getTime() < 2 * 60 * 1000
     ) {
       const remainingSeconds = Math.ceil(
-        (user.reset_code_expires_at.getTime() - now.getTime()) / 1000,
+        (2 * 60 * 1000 -
+          (now.getTime() - user.last_reset_request_at.getTime())) /
+          1000,
       );
       throw new HttpException(
         `You must wait ${remainingSeconds} seconds before requesting another reset code.`,
         HttpStatus.BAD_REQUEST,
       );
     }
-
     const code = Math.floor(1000 + Math.random() * 9000).toString();
 
     user.reset_code = code;
     user.reset_code_used = false;
     user.reset_code_expires_at = new Date(Date.now() + 2 * 60 * 1000);
     user.last_reset_request_at = now;
-    console.log('Código:', user.reset_code);
-    console.log('Expira em:', user.reset_code_expires_at);
-    console.log('Código usado?', user.reset_code_used);
-    console.log('Última requisição:', user.last_reset_request_at);
 
     await user.save();
 
@@ -271,7 +267,6 @@ export class AuthService {
 
     return { message: 'Reset code sent to email' };
   }
-
   async resetPasswordWithCode(
     email: string,
     code: string,

@@ -8,6 +8,7 @@ import { RegisterPatientDto } from './dtos/register-patient.dto';
 import { RegisterAdminDto } from './dtos/register-admin.dto';
 import { RolesGuard } from './guards/roles.guard';
 import { UserPayload } from './auth.service';
+import { RateLimitGuard } from './guards/rate-limit.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -46,6 +47,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @UseGuards(RateLimitGuard)
   async sendPasswordResetCode(@Body('email') email: string) {
     return this.authService.sendPasswordResetCode(email);
   }

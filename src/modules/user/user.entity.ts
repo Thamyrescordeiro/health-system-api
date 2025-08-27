@@ -39,16 +39,16 @@ export class User extends Model<User, CreateUserDto> {
   declare active: boolean;
 
   @Column({ allowNull: true })
-  reset_code: string;
+  declare reset_code: string;
 
   @Column({ type: DataType.DATE, allowNull: true })
-  reset_code_expires_at: Date;
+  declare reset_code_expires_at: Date;
 
   @Column({ defaultValue: false })
-  reset_code_used: boolean;
+  declare reset_code_used: boolean;
 
   @Column({ type: DataType.DATE, allowNull: true })
-  last_reset_request_at?: Date;
+  declare last_reset_request_at?: Date;
 
   @Column({
     type: DataType.ENUM('patient', 'doctor', 'admin', 'super_admin'),
