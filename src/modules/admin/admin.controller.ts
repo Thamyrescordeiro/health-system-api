@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -295,6 +296,16 @@ export class AdminController {
     return await this.adminService.findAllAppoiments(companyId);
   }
 
+  @Get('appoiments/by-date')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async findByDate(
+    @Query('date') date: string,
+    @Query('companyId') companyId: string,
+  ) {
+    return this.adminService.findByDate(date, companyId);
+  }
+
   @Get('appoiments/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -355,5 +366,21 @@ export class AdminController {
     @Query('companyId') companyId: string,
   ) {
     return await this.adminService.cancelAppoiment(id, companyId);
+  }
+
+  @Get('appoiments/doctors/:doctorId/availability')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async availabilityByDoctor(
+    @Param('doctorId') doctorId: string,
+    @Query('date') date: string,
+    @Query('companyId') companyId: string,
+  ) {
+    if (!date) {
+      throw new BadRequestException(
+        'query param "date" (YYYY-MM-DD) é obrigatório',
+      );
+    }
+    return this.adminService.findAvailableByDoctor(doctorId, date, companyId);
   }
 }
