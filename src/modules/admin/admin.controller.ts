@@ -20,11 +20,12 @@ import { CreateAppoimentsDto } from '../appoiments/dtos/create-appoiments.dto';
 import { UpdateAppoimentsDto } from '../appoiments/dtos/update-appoiments.dto';
 import { Request } from 'express';
 import { EmailService } from '../../Email/email.service';
-import { RegisterDto } from '../auth/dtos/register.dto';
+import { RegisterAdminDto } from '../auth/dtos/register-admin.dto';
 
 interface RequestUser {
   user_id: string;
   role: 'patient' | 'doctor' | 'admin';
+  companyId: string;
 }
 
 @Controller('admins')
@@ -42,7 +43,7 @@ export class AdminController {
   @Roles('super_admin')
   async updateAdmin(
     @Param('id') adminId: string,
-    @Body() dto: Partial<RegisterDto>,
+    @Body() dto: Partial<RegisterAdminDto>,
   ) {
     return this.adminService.updateAdmin(adminId, dto);
   }
@@ -271,13 +272,12 @@ export class AdminController {
   @Roles('admin')
   async createAppointment(
     @Body() appoimentsDto: CreateAppoimentsDto,
-    @Body('userId') userId: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { user_id: string; company_id: string } },
   ) {
-    return await this.adminService.createAppoiment(
+    return this.adminService.createAppoiment(
       appoimentsDto,
-      userId,
-      companyId,
+      req.user.user_id,
+      req.user.company_id,
     );
   }
 

@@ -8,6 +8,7 @@ import {
   Matches,
 } from 'class-validator';
 import { IsCPF } from './types';
+import { Unique } from 'sequelize-typescript';
 
 export class CreatePatientDto {
   @IsNotEmpty()
@@ -22,7 +23,8 @@ export class CreatePatientDto {
 
   @IsNotEmpty()
   @IsString()
-  @IsCPF()
+  @IsCPF({ message: 'Invalid CPF' })
+  @Unique({ name: 'cpf', msg: 'CPF already exists' })
   cpf: string;
 
   @IsNotEmpty()

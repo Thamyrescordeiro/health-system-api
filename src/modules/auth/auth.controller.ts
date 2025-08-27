@@ -1,18 +1,13 @@
-import {
-  Controller,
-  Request,
-  Post,
-  Body,
-  UseGuards,
-  Query,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, Request, Post, Body, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
-import { RegisterDto } from './dtos/register.dto';
+import { RegisterDoctorDto } from './dtos/register-doctor.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Roles } from './decorators/roles.decorator';
+import { RegisterPatientDto } from './dtos/register-patient.dto';
+import { RegisterAdminDto } from './dtos/register-admin.dto';
 import { RolesGuard } from './guards/roles.guard';
+import { UserPayload } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -27,32 +22,27 @@ export class AuthController {
     return this.authService.login(user);
   }
   @Post('register/patient')
-  async registerPatient(
-    @Body() dto: Omit<RegisterDto, 'company_id'>, // remove company_id do DTO
-    @Query('company_id') companyId: string,
-  ) {
-    if (!companyId) {
-      throw new BadRequestException('Company ID is required');
-    }
-
-    return this.authService.registerPatient({ ...dto, company_id: companyId });
+  async registerPatient(@Body() dto: RegisterPatientDto, user: UserPayload) {
+    return this.authService.registerPatient(dto, user.company_id);
   }
-
-  @Post('register/doctor')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
+  @Post('register/doctor')
   async registerDoctor(
-    @Body() dto: RegisterDto,
+    @Body() dto: RegisterDoctorDto,
     @Request() req: { user: { company_id: string; role: string } },
   ) {
-    return this.authService.registerDoctor(dto, req.user.role);
+    return this.authService.registerDoctor(
+      dto,
+      req.user.company_id,
+      req.user.role,
+    );
   }
-
-  @Post('register/admins')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
-  async registerAdmin(@Body() dto: RegisterDto) {
-    return this.authService.registerAdmin(dto);
+  @Post('register/admins')
+  async registerAdmin(@Body() dto: RegisterAdminDto) {
+    return this.authService.registerAdmin(dto, dto.company_id);
   }
 
   @Post('forgot-password')

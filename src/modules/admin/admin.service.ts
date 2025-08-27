@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Admin } from './admin.entity';
 import { Doctor } from '../doctors/doctors.entity';
 import { Patient } from '../patient/patient.entity';
-import { Appoiments, UrgencyLevel } from '../appoiments/appoiments.entity';
+import { Appoiments } from '../appoiments/appoiments.entity';
 import { UpdateDoctorDto } from '../doctors/dtos/update-doctors.dto';
 import { PatientService } from '../patient/patient.service';
 import { UpdatePatientDto } from '../patient/dtos/update-patient.dto';
@@ -18,7 +18,8 @@ import { CreateCompanyDto } from '../Company/dtos/create-company.dto';
 import { Op } from 'sequelize';
 import { User } from '../user/user.entity';
 import { CompanyService } from '../Company/company.service';
-import { RegisterDto } from '../auth/dtos/register.dto';
+import { CreatePatientInlineDto } from '../patient/dtos/Create-patientInline.dto';
+import { RegisterAdminDto } from '../auth/dtos/register-admin.dto';
 @Injectable()
 export class AdminService {
   constructor(
@@ -37,7 +38,7 @@ export class AdminService {
   ) {}
 
   // Admin //
-  async updateAdmin(adminId: string, dto: Partial<RegisterDto>) {
+  async updateAdmin(adminId: string, dto: Partial<RegisterAdminDto>) {
     const user = await this.userModel.findByPk(adminId);
     if (!user) throw new HttpException('Admin not found', HttpStatus.NOT_FOUND);
     await user.update(dto);
@@ -190,6 +191,14 @@ export class AdminService {
   }
   // Patients //
 
+  async create(data: CreatePatientInlineDto & { company_id: string }) {
+    const patientData = {
+      ...data,
+      phone: data.phone ?? '',
+    };
+    return this.patientModel.create(patientData);
+  }
+
   async findAllPatients(companyId: string) {
     return this.patientModel.findAll({ where: { company_id: companyId } });
   }
@@ -238,7 +247,8 @@ export class AdminService {
     userId: string,
     companyId: string,
   ) {
-    const { doctor_id, dateTime, status, notes } = appoiment;
+    const { doctor_id, dateTime, status, notes, patient_id, patient } =
+      appoiment;
 
     const doctorExists = await this.doctorsService.findById(
       doctor_id,
@@ -247,15 +257,29 @@ export class AdminService {
     if (!doctorExists) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
-    const patientExists = await this.patientService.findByUserId(
-      userId,
-      companyId,
-    );
-    if (!patientExists) {
-      throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
+
+    let patientRecord: Patient | null;
+    if (patient_id) {
+      patientRecord = await this.patientService.findById(patient_id, companyId);
+      if (!patientRecord) {
+        throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
+      }
+    } else if (patient) {
+      patientRecord = await this.create({
+        ...patient,
+        company_id: companyId,
+      });
+    } else {
+      throw new HttpException(
+        'Patient information is required',
+        HttpStatus.BAD_REQUEST,
+      );
     }
+
+    const patientId = patientRecord.patient_id;
+
     const hasPending = await this.appoimentsService.hasPendingAppointment(
-      patientExists.getDataValue('patient_id'),
+      patientId,
       doctor_id,
       companyId,
     );
@@ -266,7 +290,6 @@ export class AdminService {
         HttpStatus.CONFLICT,
       );
     }
-
     const existingAppointment = await this.appoimentsModel.findOne({
       where: { doctor_id, dateTime, company_id: companyId },
     });
@@ -277,45 +300,15 @@ export class AdminService {
       );
     }
 
-    let urgencyLevel: UrgencyLevel | null = null;
-    if (notes) {
-      urgencyLevel = await this.appoimentsService.classifyUrgency(notes);
-    }
-    const newAppointment = {
-      patient_id: patientExists.getDataValue('patient_id'),
+    return this.appoimentsModel.create({
       doctor_id,
+      patient_id: patientId,
       dateTime,
       status,
       notes,
-      urgencyLevel,
       company_id: companyId,
-    };
-
-    const patientEmail = patientExists.user?.email;
-    if (!patientEmail) {
-      throw new HttpException(
-        'Patient email not found',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    await this.emailService.sendMail(
-      patientEmail,
-      'Consulta Confirmada',
-      `Olá ${patientExists.name}, sua consulta com Dr(a). ${doctorExists.name} foi agendada para ${new Date(dateTime).toLocaleString()}.`,
-    );
-
-    if (doctorExists.user?.email) {
-      await this.emailService.sendMail(
-        doctorExists.user.email,
-        'Nova Consulta Agendada',
-        `Olá Dr(a). ${doctorExists.name}, você tem uma nova consulta com ${patientExists.name} no dia ${new Date(dateTime).toLocaleString()}.`,
-      );
-    }
-
-    return await this.appoimentsModel.create(newAppointment);
+    });
   }
-
   async findAllAppoiments(companyId: string) {
     return this.appoimentsService.findAll(companyId);
   }

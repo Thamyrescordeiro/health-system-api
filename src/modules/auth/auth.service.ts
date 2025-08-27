@@ -11,14 +11,13 @@ import { Doctor } from '../doctors/doctors.entity';
 import { Patient } from '../patient/patient.entity';
 import { Admin } from '../admin/admin.entity';
 import { Sequelize } from 'sequelize-typescript';
-import { RegisterDto } from './dtos/register.dto';
-import { CreatePatientDto } from '../patient/dtos/create-patient.dto';
-import { CreateDoctorDto } from '../doctors/dtos/create-doctors.dto';
-import { CreateAdminDto } from '../admin/dtos/create-admin.dto';
 import { Company } from '../Company/company.entity';
 import { EmailService } from '../../Email/email.service';
+import { RegisterPatientDto } from './dtos/register-patient.dto';
+import { RegisterAdminDto } from './dtos/register-admin.dto';
+import { RegisterDoctorDto } from './dtos/register-doctor.dto';
 
-interface UserPayload {
+export interface UserPayload {
   user_id: string;
   email: string;
   role: 'patient' | 'doctor' | 'admin' | 'super_admin';
@@ -65,64 +64,11 @@ export class AuthService {
     };
   }
 
-  async registerPatient(dto: RegisterDto) {
-    const existingUser = await this.userModel.findOne({
-      where: { email: dto.email },
-    });
-    if (existingUser) {
-      throw new HttpException('Email already in use', HttpStatus.BAD_REQUEST);
-    }
-    const existingPatient = await this.adminModel.findOne({
-      where: { cpf: (dto.profile as CreatePatientDto).cpf },
-    });
-    if (existingPatient) {
-      throw new HttpException('CPF already in use', HttpStatus.BAD_REQUEST);
-    }
-
-    if (!dto.company_id) {
-      throw new HttpException(
-        'Company ID is required for patient registration',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    const company = await this.companyModel.findOne({
-      where: { company_id: dto.company_id, active: true },
-    });
-    if (!company) {
-      throw new HttpException(
-        'Company not found or inactive',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    return this.sequelize.transaction(async (t) => {
-      const user = await this.userModel.create(
-        {
-          email: dto.email,
-          password: dto.password,
-          role: 'patient',
-          company_id: dto.company_id,
-        },
-        { transaction: t },
-      );
-
-      const patientData: CreatePatientDto & {
-        user_id: string;
-        company_id: string;
-      } = {
-        ...(dto.profile as CreatePatientDto),
-        user_id: user.user_id,
-        company_id: dto.company_id,
-      };
-
-      const profile = await this.patientModel.create(patientData, {
-        transaction: t,
-      });
-
-      return { user, profile };
-    });
-  }
-  async registerDoctor(dto: RegisterDto, currentUserRole: string) {
+  async registerDoctor(
+    dto: RegisterDoctorDto,
+    companyId: string,
+    currentUserRole: string,
+  ) {
     if (currentUserRole !== 'admin') {
       throw new ForbiddenException('Only admins can create doctors.');
     }
@@ -133,15 +79,16 @@ export class AuthService {
     if (existingUser) {
       throw new HttpException('Email already in use', HttpStatus.BAD_REQUEST);
     }
+
     const existingDoctor = await this.doctorModel.findOne({
-      where: { crm: (dto.profile as CreateDoctorDto).crm },
+      where: { crm: dto.profile.crm },
     });
     if (existingDoctor) {
       throw new HttpException('CRM already in use', HttpStatus.BAD_REQUEST);
     }
 
     const company = await this.companyModel.findOne({
-      where: { company_id: dto.company_id, active: true },
+      where: { company_id: companyId, active: true },
     });
     if (!company) {
       throw new HttpException(
@@ -156,27 +103,84 @@ export class AuthService {
           email: dto.email,
           password: dto.password,
           role: 'doctor',
-          company_id: dto.company_id,
+          company_id: companyId,
         },
         { transaction: t },
       );
 
-      const doctorData: CreateDoctorDto & { user_id: string } = {
-        ...(dto.profile as CreateDoctorDto),
+      const doctorData = {
+        ...dto.profile,
         user_id: user.user_id,
+        company_id: companyId,
       };
 
       const profile = await this.doctorModel.create(doctorData, {
         transaction: t,
       });
-
       return { user, profile };
     });
   }
 
-  // Admins //
+  async registerPatient(dto: RegisterPatientDto, companyId: string) {
+    const existingUser = await this.userModel.findOne({
+      where: { email: dto.email },
+    });
+    if (existingUser) {
+      throw new HttpException('Email already in use', HttpStatus.BAD_REQUEST);
+    }
 
-  async registerAdmin(dto: RegisterDto) {
+    const existingPatient = await this.patientModel.findOne({
+      where: { cpf: dto.profile.cpf },
+    });
+    if (existingPatient) {
+      throw new HttpException('CPF already in use', HttpStatus.BAD_REQUEST);
+    }
+
+    const company = await this.companyModel.findOne({
+      where: { company_id: companyId, active: true },
+    });
+    if (!company) {
+      throw new HttpException(
+        'Company not found or inactive',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return this.sequelize.transaction(async (t) => {
+      const user = await this.userModel.create(
+        {
+          email: dto.email,
+          password: dto.password,
+          role: 'patient',
+          company_id: companyId,
+        },
+        { transaction: t },
+      );
+
+      const patientData = {
+        ...dto.profile,
+        user_id: user.user_id,
+        company_id: companyId,
+      };
+
+      const profile = await this.patientModel.create(patientData, {
+        transaction: t,
+      });
+      return { user, profile };
+    });
+  }
+
+  async registerAdmin(dto: RegisterAdminDto, companyId?: string) {
+    if (!companyId) {
+      if (!dto.company_id) {
+        throw new HttpException(
+          'company_id is required when creating admin as super_admin',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      companyId = dto.company_id;
+    }
+
     const existingUser = await this.userModel.findOne({
       where: { email: dto.email },
     });
@@ -185,14 +189,14 @@ export class AuthService {
     }
 
     const existingAdmin = await this.adminModel.findOne({
-      where: { cpf: (dto.profile as CreateAdminDto).cpf },
+      where: { cpf: dto.profile.cpf },
     });
     if (existingAdmin) {
       throw new HttpException('CPF already in use', HttpStatus.BAD_REQUEST);
     }
 
     const company = await this.companyModel.findOne({
-      where: { company_id: dto.company_id, active: true },
+      where: { company_id: companyId, active: true },
     });
     if (!company) {
       throw new HttpException(
@@ -207,27 +211,22 @@ export class AuthService {
           email: dto.email,
           password: dto.password,
           role: 'admin',
-          company_id: dto.company_id,
+          company_id: companyId,
         },
         { transaction: t },
       );
 
-      const adminData: CreateAdminDto & {
-        user_id: string;
-        company_id: string;
-      } = {
-        ...(dto.profile as CreateAdminDto),
+      const adminData = {
+        ...dto.profile,
         user_id: user.user_id,
-        company_id: dto.company_id,
+        company_id: companyId,
       };
+
       const profile = await this.adminModel.create(adminData, {
         transaction: t,
       });
 
-      return {
-        user,
-        profile,
-      };
+      return { user, profile };
     });
   }
   async sendPasswordResetCode(email: string) {
@@ -236,7 +235,6 @@ export class AuthService {
 
     const now = new Date();
 
-    // Bloqueia se já existe um código ativo que não foi usado
     if (
       user.reset_code &&
       !user.reset_code_used &&
@@ -252,15 +250,12 @@ export class AuthService {
       );
     }
 
-    // Gera novo código
     const code = Math.floor(1000 + Math.random() * 9000).toString();
 
     user.reset_code = code;
     user.reset_code_used = false;
-    user.reset_code_expires_at = new Date(Date.now() + 2 * 60 * 1000); // 2 minutos
-    user.last_reset_request_at = now; // marca o horário do envio
-
-    // <<< Aqui você testa os valores antes de salvar no banco
+    user.reset_code_expires_at = new Date(Date.now() + 2 * 60 * 1000);
+    user.last_reset_request_at = now;
     console.log('Código:', user.reset_code);
     console.log('Expira em:', user.reset_code_expires_at);
     console.log('Código usado?', user.reset_code_used);
@@ -287,7 +282,6 @@ export class AuthService {
 
     const now = new Date();
 
-    // Verifica se o código é válido
     if (
       !user.reset_code ||
       user.reset_code_used ||
@@ -301,7 +295,6 @@ export class AuthService {
       );
     }
 
-    // Atualiza senha e marca código como usado
     await user.update({
       password: newPassword,
       reset_code_used: true,

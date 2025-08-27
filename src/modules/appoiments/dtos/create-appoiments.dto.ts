@@ -6,9 +6,12 @@ import {
   IsString,
   Validate,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
 import { IsFutureDateConstraint } from './types';
 import { AppointmentStatus } from './types';
+import { Type } from 'class-transformer';
+import { CreatePatientInlineDto } from 'src/modules/patient/dtos/Create-patientInline.dto';
 
 export class CreateAppoimentsDto {
   @IsNotEmpty()
@@ -25,4 +28,17 @@ export class CreateAppoimentsDto {
 
   @IsUUID()
   doctor_id: string;
+
+  @IsOptional()
+  @IsUUID()
+  patient_id?: string;
+
+  @IsOptional()
+  @IsUUID()
+  company_id?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreatePatientInlineDto)
+  patient?: CreatePatientInlineDto;
 }
