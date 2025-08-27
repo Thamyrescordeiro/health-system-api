@@ -24,7 +24,6 @@ export class CreatePatientDto {
   @IsNotEmpty()
   @IsString()
   @IsCPF({ message: 'Invalid CPF' })
-  @Unique({ name: 'cpf', msg: 'CPF already exists' })
   cpf: string;
 
   @IsNotEmpty()
