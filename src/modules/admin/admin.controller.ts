@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -18,9 +20,11 @@ import { UpdateDoctorDto } from '../doctors/dtos/update-doctors.dto';
 import { UpdatePatientDto } from '../patient/dtos/update-patient.dto';
 import { CreateAppoimentsDto } from '../appoiments/dtos/create-appoiments.dto';
 import { UpdateAppoimentsDto } from '../appoiments/dtos/update-appoiments.dto';
-import { Request } from 'express';
+import { Request } from '@nestjs/common';
 import { EmailService } from '../../Email/email.service';
 import { RegisterAdminDto } from '../auth/dtos/register-admin.dto';
+import { Company } from '../Company/company.entity';
+import { InjectModel } from '@nestjs/sequelize';
 
 interface RequestUser {
   user_id: string;
@@ -34,6 +38,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly emailService: EmailService,
+    @InjectModel(Company) private readonly companyModel: typeof Company,
   ) {}
 
   // Admin//
@@ -76,40 +81,29 @@ export class AdminController {
     return this.adminService.listAdminsByCompany(companyId);
   }
 
-  @Get('companies/:id/patient-link')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  generatePatientLink(@Param('id') companyId: string) {
-    return {
-      link: `${process.env.FRONT_URL}/register/patient?company_id=${companyId}`,
-    };
-  }
-
-  @Post('companies/:id/send-patient-link')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  async sendPatientLink(
-    @Param('id') companyId: string,
-    @Body('email') email: string,
-  ) {
-    const link = `${process.env.FRONT_URL}/register/patient?company_id=${companyId}`;
-
-    await this.emailService.sendMail(
-      email,
-      'Cadastro de Paciente',
-      `Clique no link para se cadastrar: ${link}`,
-      `<p>Clique no link para se cadastrar: <a href="${link}">${link}</a></p>`,
-    );
-
-    return { message: 'Patient link sent successfully!', link };
-  }
-
   // Companies //
   @Get('companies')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   async findAllCompanies() {
     return this.adminService.findAllCompanies();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('invite')
+  async getInviteLink(@Req() req: Request & { user: { company_id: string } }) {
+    const companyId = req.user.company_id;
+
+    const company = await this.companyModel.findByPk(companyId);
+    if (!company || !company.invite_token) {
+      throw new HttpException('Invite not found', HttpStatus.NOT_FOUND);
+    }
+    const frontUrl = process.env.FRONT_URL;
+
+    return {
+      inviteLink: `${frontUrl}/register/patient?companyId=${companyId}&token=${company.invite_token}`,
+    };
   }
 
   @Post('create/companies')
@@ -300,10 +294,10 @@ export class AdminController {
   @Roles('admin')
   async findAppoimentsById(
     @Param('id') appoiments_id: string,
-    @Req() req: Request,
+    @Req() req: Request & { user: RequestUser },
     @Query('companyId') companyId: string,
   ) {
-    const user = req.user as RequestUser;
+    const user = req.user;
     const userId = user.user_id;
     const userRole = user.role;
     return await this.adminService.findAppoimentsById(
@@ -320,10 +314,10 @@ export class AdminController {
   async reschedule(
     @Param('id') id: string,
     @Body('dateTime') newDateTime: string,
-    @Req() req: Request,
+    @Req() req: Request & { user: RequestUser },
     @Query('companyId') companyId: string,
   ) {
-    const user = req.user as RequestUser;
+    const user = req.user;
     const patientId = user.user_id;
     return await this.adminService.reschedule(
       id,

@@ -23,6 +23,9 @@ export class Company extends Model<Company, CreateCompanyDto> {
   @Column({ allowNull: false, unique: true })
   declare cnpj: string;
 
+  @Column({ allowNull: true })
+  declare invite_token?: string;
+
   @Column({ defaultValue: true })
   declare active: boolean;
 

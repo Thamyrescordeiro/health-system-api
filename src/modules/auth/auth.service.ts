@@ -16,6 +16,7 @@ import { EmailService } from '../../Email/email.service';
 import { RegisterPatientDto } from './dtos/register-patient.dto';
 import { RegisterAdminDto } from './dtos/register-admin.dto';
 import { RegisterDoctorDto } from './dtos/register-doctor.dto';
+import { randomBytes } from 'crypto';
 
 export interface UserPayload {
   user_id: string;
@@ -125,6 +126,7 @@ export class AuthService {
     const existingUser = await this.userModel.findOne({
       where: { email: dto.email },
     });
+
     if (existingUser) {
       throw new HttpException('Email already in use', HttpStatus.BAD_REQUEST);
     }
@@ -226,7 +228,14 @@ export class AuthService {
         transaction: t,
       });
 
-      return { user, profile };
+      const inviteToken = randomBytes(16).toString('hex');
+      await company.update({ invite_token: inviteToken }, { transaction: t });
+
+      const frontUrl = process.env.FRONT_URL;
+
+      const inviteLink = `${frontUrl}/register/patient?companyId=${companyId}${companyId}&token=${inviteToken}`;
+
+      return { user, profile, inviteLink };
     });
   }
   async sendPasswordResetCode(email: string) {
