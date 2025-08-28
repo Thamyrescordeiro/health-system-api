@@ -259,12 +259,26 @@ export class AdminService {
     }
 
     let patientRecord: Patient | null;
+
     if (patient_id) {
       patientRecord = await this.patientService.findById(patient_id, companyId);
       if (!patientRecord) {
         throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
       }
     } else if (patient) {
+      if (patient.cpf) {
+        const existingPatient = await this.patientModel.findOne({
+          where: { cpf: patient.cpf, company_id: companyId },
+        });
+
+        if (existingPatient) {
+          throw new HttpException(
+            'cpf is already registered for another patient',
+            HttpStatus.CONFLICT,
+          );
+        }
+      }
+
       patientRecord = await this.create({
         ...patient,
         company_id: companyId,
@@ -275,6 +289,7 @@ export class AdminService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
     const slot = new Date(dateTime);
     if (isNaN(slot.getTime())) {
       throw new HttpException('Invalid dateTime', HttpStatus.BAD_REQUEST);
