@@ -483,7 +483,7 @@ export class AdminService {
         doctor_id,
         company_id: companyId,
         dateTime: {
-          $between: [startDay, endDay],
+          [Op.between]: [startDay, endDay],
         },
       },
     });
@@ -498,10 +498,17 @@ export class AdminService {
       '16:00',
     ];
 
-    const takenHours = appointments.map((a) => {
-      const dt = new Date(a.dateTime);
-      return dt.toISOString().substring(11, 16);
-    });
+    const takenHours = appointments
+      .map((a) => {
+        const dt = new Date(a.dateTime);
+
+        if (isNaN(dt.getTime())) {
+          console.error(`Invalid date: ${a.dateTime}`);
+          return null;
+        }
+        return dt.toISOString().substring(11, 16);
+      })
+      .filter(Boolean);
 
     const freeHours = availableSlots.filter(
       (hour) => !takenHours.includes(hour),
@@ -512,7 +519,6 @@ export class AdminService {
       taken: takenHours,
     };
   }
-
   async cancelAppoiment(appoiments_id: string, companyId: string) {
     const appoiment = await this.appoimentsModel.findOne({
       where: { appoiments_id, company_id: companyId },
