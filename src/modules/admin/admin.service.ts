@@ -275,6 +275,15 @@ export class AdminService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    const slot = new Date(dateTime);
+    if (isNaN(slot.getTime())) {
+      throw new HttpException('Invalid dateTime', HttpStatus.BAD_REQUEST);
+    }
+
+    const slotStart = new Date(slot);
+    slotStart.setSeconds(0, 0);
+    const slotEnd = new Date(slotStart);
+    slotEnd.setMinutes(slotStart.getMinutes() + 1);
 
     const patientId = patientRecord.patient_id;
 
@@ -345,9 +354,16 @@ export class AdminService {
   }
 
   async findByDate(date: string, companyId: string) {
+    const start = new Date(`${date}T00:00:00`);
+    const end = new Date(`${date}T23:59:59`);
+
     return this.appoimentsModel.findAll({
-      where: { dateTime: date, company_id: companyId },
+      where: {
+        company_id: companyId,
+        dateTime: { [Op.between]: [start, end] },
+      },
       include: [Patient, Doctor],
+      order: [['dateTime', 'ASC']],
     });
   }
 
@@ -467,7 +483,7 @@ export class AdminService {
         doctor_id,
         company_id: companyId,
         dateTime: {
-          $between: [startDay, endDay],
+          [Op.between]: [startDay, endDay],
         },
       },
     });
@@ -480,11 +496,13 @@ export class AdminService {
       '15:00',
       '16:00',
     ];
-    const takenHours = appointments.map((a) =>
-      new Date(a.dateTime).toISOString().substring(11, 16),
-    );
-
-    return availableSlots.filter((hour) => !takenHours.includes(hour));
+    const takenHours = appointments.map((a) => {
+      const dt = new Date(a.dateTime);
+      const hh = String(dt.getHours()).padStart(2, '0');
+      const mm = String(dt.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    });
+    return availableSlots.filter((h) => !takenHours.includes(h));
   }
 
   async cancelAppoiment(appoiments_id: string, companyId: string) {
@@ -575,5 +593,13 @@ export class AdminService {
     }
 
     return stats;
+  }
+  private static toLocalIsoMinute(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${dd}T${hh}:${mm}:00`;
   }
 }

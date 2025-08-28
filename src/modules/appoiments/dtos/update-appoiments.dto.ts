@@ -13,8 +13,10 @@ export class UpdateAppoimentsDto {
   notes?: string;
 
   @IsUUID()
+  @IsOptional()
   patient_id: string;
 
   @IsUUID()
+  @IsOptional()
   doctor_id: string;
 }
