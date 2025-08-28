@@ -22,6 +22,7 @@ export class AppoimentsService {
     private readonly emailService: EmailService,
 
     @InjectModel(Patient) private readonly patientModel: typeof Patient,
+    @InjectModel(Doctor) private readonly doctorModel: typeof Doctor,
   ) {}
 
   async create(
@@ -159,10 +160,20 @@ export class AppoimentsService {
     });
   }
 
-  async findByPatient(patientId: string, companyId: string) {
+  // appoiments.service.ts
+  async findByPatient(userId: string, companyId: string) {
+    // 1) achar o paciente pelo user_id da sessão
+    const patient = await this.patientModel.findOne({
+      where: { user_id: userId, company_id: companyId },
+    });
+
+    if (!patient) return []; // sem perfil de paciente para esse user
+
+    // 2) agora sim, buscar consultas pelo patient_id correto
     return this.appoimentsModel.findAll({
-      where: { patient_id: patientId, company_id: companyId },
+      where: { patient_id: patient.patient_id, company_id: companyId },
       include: [Doctor],
+      order: [['dateTime', 'ASC']],
     });
   }
 
@@ -270,23 +281,60 @@ export class AppoimentsService {
     return { message: 'Appointment cancelled successfully' };
   }
 
+  async listDoctors(
+    companyId: string,
+    opts: { specialty?: string; q?: string } = {},
+  ) {
+    const where: any = { company_id: companyId, active: true };
+    if (opts.specialty) where.specialty = opts.specialty;
+
+    if (opts.q) {
+      const term = `%${opts.q}%`;
+      where[Op.or] = [
+        { name: { [Op.iLike]: term } },
+        { lastName: { [Op.iLike]: term } },
+        { crm: { [Op.iLike]: term } },
+      ];
+    }
+
+    return this.doctorModel.findAll({
+      where,
+      order: [['name', 'ASC']],
+      attributes: [
+        'doctor_id',
+        'name',
+        'lastName',
+        'crm',
+        'specialty',
+        'phone',
+        'birthDate',
+        'active',
+      ],
+    });
+  }
+
   async findAvailableByDoctor(
     doctor_id: string,
     date: string,
     companyId: string,
   ) {
-    const startDay = new Date(date + 'T00:00:00');
-    const endDay = new Date(date + 'T23:59:59');
+    const ymd = this.toYMD(date);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+      throw new HttpException('Invalid date', HttpStatus.BAD_REQUEST);
+    }
+
+    const startDay = new Date(`${ymd}T00:00:00`);
+    const endDay = new Date(`${ymd}T23:59:59`);
 
     const appointments = await this.appoimentsModel.findAll({
       where: {
         doctor_id,
         company_id: companyId,
-        dateTime: {
-          $between: [startDay, endDay],
-        },
+        dateTime: { [Op.between]: [startDay, endDay] },
       },
     });
+
+    // Mantenha a mesma grade que você já usa no admin (ou adicione 08:30/10:30/15:30 se quiser)
     const availableSlots = [
       '08:00',
       '09:00',
@@ -296,11 +344,25 @@ export class AppoimentsService {
       '15:00',
       '16:00',
     ];
-    const takenHours = appointments.map((a) =>
-      new Date(a.dateTime).toISOString().substring(11, 16),
-    );
 
-    return availableSlots.filter((hour) => !takenHours.includes(hour));
+    const takenHours = appointments
+      .map((a) => {
+        const raw = (a as any)?.dateTime;
+        const dt = raw instanceof Date ? raw : new Date(raw);
+        if (!(dt instanceof Date) || isNaN(dt.getTime())) {
+          // segurança: ignora registros ruins para não estourar RangeError
+          // console.error(`Invalid dateTime on appoiment:`, raw);
+          return null;
+        }
+        const hh = String(dt.getHours()).padStart(2, '0');
+        const mm = String(dt.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+      })
+      .filter((x): x is string => Boolean(x));
+
+    const freeHours = availableSlots.filter((h) => !takenHours.includes(h));
+
+    return { available: freeHours, taken: takenHours };
   }
 
   async classifyUrgency(notes: string): Promise<UrgencyLevel> {
@@ -354,5 +416,12 @@ Retorne apenas HIGH, MEDIUM ou LOW.
     });
 
     return !!pendingAppointment;
+  }
+
+  toYMD(date: string) {
+    if (!date) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    const m = date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : date;
   }
 }

@@ -38,16 +38,18 @@ export class AppoimentsController {
     );
   }
 
-  @Get(':id')
-  @Roles('doctor', 'patient', 'admin')
-  async findById(@Param('id') appoiments_id: string, @Req() req: Request) {
+  @Get('doctors')
+  @Roles('patient', 'admin', 'doctor')
+  async listDoctors(
+    @Req() req: Request,
+    @Query('specialty') specialty?: string,
+    @Query('q') q?: string,
+  ) {
     const user = req.user as RequestUser;
-    return await this.appoimentsService.findById(
-      appoiments_id,
-      user.user_id,
-      user.company_id,
-      user.role,
-    );
+    return this.appoimentsService.listDoctors(user.company_id, {
+      specialty,
+      q,
+    });
   }
 
   @Get('by-date/:date')
@@ -83,7 +85,6 @@ export class AppoimentsController {
       user.company_id,
     );
   }
-
   @Get('doctors/:id/availability')
   @Roles('doctor', 'patient', 'admin')
   async getDoctorAvailability(
@@ -96,6 +97,17 @@ export class AppoimentsController {
       doctorId,
       date,
       user.company_id,
+    );
+  }
+  @Get(':id')
+  @Roles('doctor', 'patient', 'admin')
+  async findById(@Param('id') appoiments_id: string, @Req() req: Request) {
+    const user = req.user as RequestUser;
+    return await this.appoimentsService.findById(
+      appoiments_id,
+      user.user_id,
+      user.company_id,
+      user.role,
     );
   }
 
@@ -115,7 +127,7 @@ export class AppoimentsController {
     );
   }
 
-  @Patch('appointments/cancel/:id')
+  @Patch('/cancel/:id')
   @Roles('admin', 'patient')
   async cancelAppointment(@Param('id') id: string, @Req() req: Request) {
     const user = req.user as RequestUser;
