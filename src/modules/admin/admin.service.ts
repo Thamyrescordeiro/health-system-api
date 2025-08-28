@@ -475,18 +475,19 @@ export class AdminService {
     date: string,
     companyId: string,
   ) {
-    const startDay = new Date(date + 'T00:00:00');
-    const endDay = new Date(date + 'T23:59:59');
+    const startDay = new Date(`${date}T00:00:00`);
+    const endDay = new Date(`${date}T23:59:59`);
 
     const appointments = await this.appoimentsModel.findAll({
       where: {
         doctor_id,
         company_id: companyId,
         dateTime: {
-          [Op.between]: [startDay, endDay],
+          $between: [startDay, endDay],
         },
       },
     });
+
     const availableSlots = [
       '08:00',
       '09:00',
@@ -496,13 +497,20 @@ export class AdminService {
       '15:00',
       '16:00',
     ];
+
     const takenHours = appointments.map((a) => {
       const dt = new Date(a.dateTime);
-      const hh = String(dt.getHours()).padStart(2, '0');
-      const mm = String(dt.getMinutes()).padStart(2, '0');
-      return `${hh}:${mm}`;
+      return dt.toISOString().substring(11, 16);
     });
-    return availableSlots.filter((h) => !takenHours.includes(h));
+
+    const freeHours = availableSlots.filter(
+      (hour) => !takenHours.includes(hour),
+    );
+
+    return {
+      available: freeHours,
+      taken: takenHours,
+    };
   }
 
   async cancelAppoiment(appoiments_id: string, companyId: string) {
