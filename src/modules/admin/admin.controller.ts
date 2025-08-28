@@ -128,11 +128,13 @@ export class AdminController {
     return this.adminService.deactivateCompany(id);
   }
   // Doctor //
-
   @Get('doctors')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  async findAllDoctors(@Query('companyId') companyId: string) {
+  async findAllDoctors(
+    @Request() req: Request & { user: { company_id: string } },
+  ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findAllDoctors(companyId);
   }
 
@@ -141,8 +143,9 @@ export class AdminController {
   @Roles('admin')
   async findDoctorById(
     @Param('id') id: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findDoctorById(id, companyId);
   }
 
@@ -151,8 +154,9 @@ export class AdminController {
   @Roles('admin')
   async findDoctorByCrm(
     @Param('crm') crm: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findDoctorByCrm(crm, companyId);
   }
 
@@ -161,8 +165,9 @@ export class AdminController {
   @Roles('admin')
   async findDoctorBySpecialty(
     @Param('specialty') specialty: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findDoctorBySpecialty(specialty, companyId);
   }
 
@@ -171,8 +176,9 @@ export class AdminController {
   @Roles('admin')
   async findDoctorByName(
     @Param('name') name: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findDoctorByName(name, companyId);
   }
 
@@ -182,8 +188,9 @@ export class AdminController {
   async updateDoctor(
     @Param('id') id: string,
     @Body() updateDoctorDto: Partial<UpdateDoctorDto>,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.updateDoctor(id, updateDoctorDto, companyId);
   }
 
@@ -192,16 +199,21 @@ export class AdminController {
   @Roles('admin')
   async desactiveDoctor(
     @Param('id') id: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.desactiveDoctor(id, companyId);
   }
+
   // Patient //
 
   @Get('patients')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  async findAllPatients(@Query('companyId') companyId: string) {
+  async findAllPatients(
+    @Req() req: Request & { user: { company_id: string } },
+  ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findAllPatients(companyId);
   }
 
@@ -210,8 +222,9 @@ export class AdminController {
   @Roles('admin')
   async findPatientById(
     @Param('id') id: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findPatientById(id, companyId);
   }
 
@@ -220,8 +233,9 @@ export class AdminController {
   @Roles('admin')
   async findPatientByCpf(
     @Param('cpf') cpf: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findPatientByCpf(cpf, companyId);
   }
 
@@ -230,8 +244,9 @@ export class AdminController {
   @Roles('admin')
   async findPatientByName(
     @Param('name') name: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findPatientByName(name, companyId);
   }
 
@@ -241,8 +256,9 @@ export class AdminController {
   async updatePatient(
     @Param('id') id: string,
     @Body() updatePatientDto: Partial<UpdatePatientDto>,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.updatePatient(
       id,
       updatePatientDto,
@@ -255,8 +271,9 @@ export class AdminController {
   @Roles('admin')
   async desactivePatient(
     @Param('id') id: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.desactivePatient(id, companyId);
   }
 
@@ -279,14 +296,20 @@ export class AdminController {
   @Get('appoiments/stats')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  async getAppoimentsStats(@Query('companyId') companyId: string) {
+  async getAppoimentsStats(
+    @Req() req: Request & { user: { company_id: string } },
+  ) {
+    const companyId = req.user.company_id;
     return await this.adminService.getAppoimentsStats(companyId);
   }
 
   @Get('appoiments')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  async findAllAppointments(@Query('companyId') companyId: string) {
+  async findAllAppointments(
+    @Req() req: Request & { user: { company_id: string } },
+  ) {
+    const companyId = req.user.company_id;
     return await this.adminService.findAllAppoiments(companyId);
   }
 
@@ -295,8 +318,9 @@ export class AdminController {
   @Roles('admin')
   async findByDate(
     @Query('date') date: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return this.adminService.findByDate(date, companyId);
   }
 
@@ -306,11 +330,11 @@ export class AdminController {
   async findAppoimentsById(
     @Param('id') appoiments_id: string,
     @Req() req: Request & { user: RequestUser },
-    @Query('companyId') companyId: string,
   ) {
     const user = req.user;
     const userId = user.user_id;
     const userRole = user.role;
+    const companyId = user.companyId;
     return await this.adminService.findAppoimentsById(
       appoiments_id,
       userId,
@@ -326,10 +350,10 @@ export class AdminController {
     @Param('id') id: string,
     @Body('dateTime') newDateTime: string,
     @Req() req: Request & { user: RequestUser },
-    @Query('companyId') companyId: string,
   ) {
     const user = req.user;
     const patientId = user.user_id;
+    const companyId = user.companyId;
     return await this.adminService.reschedule(
       id,
       newDateTime,
@@ -343,8 +367,9 @@ export class AdminController {
   async updateAppointment(
     @Param('id') id: string,
     @Body() updateAppoimentsDto: UpdateAppoimentsDto,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.updateAppoiment(
       id,
       updateAppoimentsDto,
@@ -357,8 +382,9 @@ export class AdminController {
   @Roles('admin')
   async cancelAppointment(
     @Param('id') id: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
+    const companyId = req.user.company_id;
     return await this.adminService.cancelAppoiment(id, companyId);
   }
 
@@ -368,13 +394,14 @@ export class AdminController {
   async availabilityByDoctor(
     @Param('doctorId') doctorId: string,
     @Query('date') date: string,
-    @Query('companyId') companyId: string,
+    @Req() req: Request & { user: { company_id: string } },
   ) {
     if (!date) {
       throw new BadRequestException(
         'query param "date" (YYYY-MM-DD) é obrigatório',
       );
     }
+    const companyId = req.user.company_id;
     return this.adminService.findAvailableByDoctor(doctorId, date, companyId);
   }
 }
