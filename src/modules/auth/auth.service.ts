@@ -122,11 +122,31 @@ export class AuthService {
     });
   }
 
-  async registerPatient(dto: RegisterPatientDto, companyId: string) {
+  async registerPatientWithInvite(
+    dto: RegisterPatientDto,
+    companyId: string,
+    token: string,
+  ) {
+    const company = await this.companyModel.findOne({
+      where: { company_id: companyId, active: true },
+    });
+
+    if (!company) {
+      throw new HttpException(
+        'Company not found or inactive',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (!company.invite_token || company.invite_token !== token) {
+      throw new HttpException('Invalid invite token', HttpStatus.BAD_REQUEST);
+    }
+
+    dto.company_id = companyId;
+
     const existingUser = await this.userModel.findOne({
       where: { email: dto.email },
     });
-
     if (existingUser) {
       throw new HttpException('Email already in use', HttpStatus.BAD_REQUEST);
     }
@@ -136,16 +156,6 @@ export class AuthService {
     });
     if (existingPatient) {
       throw new HttpException('CPF already in use', HttpStatus.BAD_REQUEST);
-    }
-
-    const company = await this.companyModel.findOne({
-      where: { company_id: companyId, active: true },
-    });
-    if (!company) {
-      throw new HttpException(
-        'Company not found or inactive',
-        HttpStatus.BAD_REQUEST,
-      );
     }
 
     return this.sequelize.transaction(async (t) => {
@@ -168,6 +178,7 @@ export class AuthService {
       const profile = await this.patientModel.create(patientData, {
         transaction: t,
       });
+
       return { user, profile };
     });
   }
@@ -232,12 +243,12 @@ export class AuthService {
       await company.update({ invite_token: inviteToken }, { transaction: t });
 
       const frontUrl = process.env.FRONT_URL;
-
-      const inviteLink = `${frontUrl}/register/patient?companyId=${companyId}${companyId}&token=${inviteToken}`;
+      const inviteLink = `${frontUrl}/register/patient?companyId=${companyId}&token=${inviteToken}`;
 
       return { user, profile, inviteLink };
     });
   }
+
   async sendPasswordResetCode(email: string) {
     const user = await this.userModel.findOne({ where: { email } });
 
@@ -276,6 +287,7 @@ export class AuthService {
 
     return { message: 'Reset code sent to email' };
   }
+
   async resetPasswordWithCode(
     email: string,
     code: string,

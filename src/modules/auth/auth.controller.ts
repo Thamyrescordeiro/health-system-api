@@ -1,4 +1,13 @@
-import { Controller, Request, Post, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Query,
+  HttpException,
+  HttpStatus,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
 import { RegisterDoctorDto } from './dtos/register-doctor.dto';
@@ -7,7 +16,6 @@ import { Roles } from './decorators/roles.decorator';
 import { RegisterPatientDto } from './dtos/register-patient.dto';
 import { RegisterAdminDto } from './dtos/register-admin.dto';
 import { RolesGuard } from './guards/roles.guard';
-import { UserPayload } from './auth.service';
 import { RateLimitGuard } from './guards/rate-limit.guard';
 
 @Controller('auth')
@@ -22,10 +30,22 @@ export class AuthController {
     );
     return this.authService.login(user);
   }
+
   @Post('register/patient')
-  async registerPatient(@Body() dto: RegisterPatientDto, user: UserPayload) {
-    return this.authService.registerPatient(dto, user.company_id);
+  async registerPatient(
+    @Body() dto: RegisterPatientDto,
+    @Query('companyId') companyId: string,
+    @Query('token') token: string,
+  ) {
+    if (!companyId || !token) {
+      throw new HttpException('Invalid invite', HttpStatus.BAD_REQUEST);
+    }
+
+    dto.company_id = companyId;
+
+    return this.authService.registerPatientWithInvite(dto, companyId, token);
   }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('register/doctor')
@@ -39,6 +59,7 @@ export class AuthController {
       req.user.role,
     );
   }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   @Post('register/admins')
