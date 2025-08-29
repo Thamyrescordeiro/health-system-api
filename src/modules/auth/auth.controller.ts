@@ -73,6 +73,14 @@ export class AuthController {
     return this.authService.sendPasswordResetCode(email);
   }
 
+  @Post('validate-code')
+  async validateResetCode(
+    @Body('email') email: string,
+    @Body('code') code: string,
+  ) {
+    return this.authService.validateResetCode(email, code);
+  }
+
   @Post('reset-password')
   async resetPasswordWithCode(
     @Body('email') email: string,

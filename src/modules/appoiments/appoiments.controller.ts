@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -86,34 +85,20 @@ export class AppoimentsController {
       user.company_id,
     );
   }
-
   @Get('doctors/:id/availability')
   @Roles('doctor', 'patient', 'admin')
   async getDoctorAvailability(
     @Param('id') doctorId: string,
     @Query('date') date: string,
-    @Query('companyId') companyIdFromQuery: string,
     @Req() req: Request,
   ) {
     const user = req.user as RequestUser;
-    const companyId = (user as any).company_id ?? companyIdFromQuery;
-    if (!companyId) {
-      throw new BadRequestException(
-        'companyId não encontrado no token nem na query',
-      );
-    }
-    if (!date) {
-      throw new BadRequestException(
-        'query param "date" é obrigatório (YYYY-MM-DD)',
-      );
-    }
     return this.appoimentsService.findAvailableByDoctor(
       doctorId,
       date,
-      companyId,
+      user.company_id,
     );
   }
-
   @Get(':id')
   @Roles('doctor', 'patient', 'admin')
   async findById(@Param('id') appoiments_id: string, @Req() req: Request) {

@@ -97,8 +97,7 @@ export class AuthService {
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    return this.sequelize.transaction(async (t) => {
+    const result = await this.sequelize.transaction(async (t) => {
       const user = await this.userModel.create(
         {
           email: dto.email,
@@ -109,17 +108,24 @@ export class AuthService {
         { transaction: t },
       );
 
-      const doctorData = {
-        ...dto.profile,
-        user_id: user.user_id,
-        company_id: companyId,
-      };
+      const doctor = await this.doctorModel.create(
+        {
+          ...dto.profile,
+          user_id: user.user_id,
+          company_id: companyId,
+        },
+        { transaction: t },
+      );
 
-      const profile = await this.doctorModel.create(doctorData, {
-        transaction: t,
-      });
-      return { user, profile };
+      return { user, doctor };
     });
+
+    await this.emailService.sendMail(
+      result.user.email,
+      'Sua conta de doutor foi criada',
+      `Olá Dr(a). ${result.doctor.name},\n\nSua conta foi criada com sucesso.\n\nEmail: ${result.user.email}\nSenha: ${dto.password}\n\nVocê pode acessar o sistema pelo link: ${process.env.FRONT_URL}/login`,
+    );
+    return result;
   }
 
   async registerPatientWithInvite(
@@ -286,6 +292,28 @@ export class AuthService {
     );
 
     return { message: 'Reset code sent to email' };
+  }
+
+  async validateResetCode(email: string, code: string) {
+    const user = await this.userModel.findOne({ where: { email } });
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+
+    const now = new Date();
+
+    if (
+      !user.reset_code ||
+      user.reset_code_used ||
+      !user.reset_code_expires_at ||
+      user.reset_code_expires_at < now ||
+      user.reset_code.trim() !== code.trim()
+    ) {
+      throw new HttpException(
+        'Invalid or expired code',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return { message: 'Code is valid' };
   }
 
   async resetPasswordWithCode(

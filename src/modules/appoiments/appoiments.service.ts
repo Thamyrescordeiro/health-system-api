@@ -429,8 +429,12 @@ export class AppoimentsService {
       new Set(
         appointments
           .map((a) => {
-            const raw = (a as any)?.dateTime;
-            const dt = raw instanceof Date ? raw : new Date(raw);
+            const raw =
+              a && typeof a === 'object' && 'dateTime' in a
+                ? (a as { dateTime: Date | string }).dateTime
+                : undefined;
+            const dt =
+              raw instanceof Date ? raw : raw ? new Date(raw) : undefined;
             if (!(dt instanceof Date) || isNaN(dt.getTime())) return null;
             const hh = String(dt.getHours()).padStart(2, '0');
             const mm = String(dt.getMinutes()).padStart(2, '0');

@@ -44,4 +44,10 @@ export class CreateDoctorDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
+
+  @IsOptional()
+  user_id?: string;
+
+  @IsOptional()
+  company_id?: string;
 }
