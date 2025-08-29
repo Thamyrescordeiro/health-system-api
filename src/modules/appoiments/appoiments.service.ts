@@ -46,12 +46,23 @@ export class AppoimentsService {
     if (!patientExists) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
+
+    const when = new Date(dateTime);
+    if (isNaN(when.getTime())) {
+      throw new HttpException('Invalid date', HttpStatus.BAD_REQUEST);
+    }
+    if (when <= new Date()) {
+      throw new HttpException(
+        'New date must be in the future',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const hasPending = await this.hasPendingAppointment(
       patientExists.getDataValue('patient_id'),
       doctor_id,
       companyId,
     );
-
     if (hasPending) {
       throw new HttpException(
         'You must complete your previous appointment with this doctor before booking a new one.',
@@ -60,7 +71,14 @@ export class AppoimentsService {
     }
 
     const existingAppointment = await this.appoimentsModel.findOne({
-      where: { doctor_id, dateTime, company_id: companyId },
+      where: {
+        doctor_id,
+        dateTime,
+        company_id: companyId,
+        status: {
+          [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+        },
+      },
     });
     if (existingAppointment) {
       throw new HttpException(
@@ -73,7 +91,11 @@ export class AppoimentsService {
     if (notes) {
       urgencyLevel = await this.classifyUrgency(notes);
     }
-    const newAppointment = {
+    const newAppointment: CreateAppoimentsDto & {
+      patient_id: string;
+      company_id: string;
+      urgencyLevel: UrgencyLevel | null;
+    } = {
       patient_id: patientExists.getDataValue('patient_id'),
       doctor_id,
       dateTime,
@@ -147,29 +169,48 @@ export class AppoimentsService {
   }
 
   async findByDate(date: string, companyId: string) {
+    const ymd = this.toYMD(date);
+    const start = new Date(`${ymd}T00:00:00`);
+    const end = new Date(`${ymd}T23:59:59`);
     return this.appoimentsModel.findAll({
-      where: { dateTime: date, company_id: companyId },
+      where: {
+        company_id: companyId,
+        dateTime: { [Op.between]: [start, end] },
+      },
       include: [Patient, Doctor],
+      order: [['dateTime', 'ASC']],
     });
+  }
+
+  private async resolveDoctorId(
+    incomingId: string,
+    companyId: string,
+  ): Promise<string> {
+    const doc = await this.doctorModel.findOne({
+      where: {
+        company_id: companyId,
+        [Op.or]: [{ doctor_id: incomingId }, { user_id: incomingId }],
+      },
+      attributes: ['doctor_id', 'user_id'],
+    });
+    return doc?.getDataValue('doctor_id') || incomingId;
   }
 
   async findByDoctor(doctor_id: string, companyId: string) {
+    const resolvedDoctorId = await this.resolveDoctorId(doctor_id, companyId);
     return this.appoimentsModel.findAll({
-      where: { doctor_id, company_id: companyId },
+      where: { doctor_id: resolvedDoctorId, company_id: companyId },
       include: [Patient, Doctor],
     });
   }
 
-  // appoiments.service.ts
   async findByPatient(userId: string, companyId: string) {
-    // 1) achar o paciente pelo user_id da sessão
     const patient = await this.patientModel.findOne({
       where: { user_id: userId, company_id: companyId },
     });
 
-    if (!patient) return []; // sem perfil de paciente para esse user
+    if (!patient) return [];
 
-    // 2) agora sim, buscar consultas pelo patient_id correto
     return this.appoimentsModel.findAll({
       where: { patient_id: patient.patient_id, company_id: companyId },
       include: [Doctor],
@@ -209,7 +250,6 @@ export class AppoimentsService {
     if (isNaN(newDate.getTime())) {
       throw new HttpException('Invalid birth date', HttpStatus.BAD_REQUEST);
     }
-
     if (newDate <= new Date()) {
       throw new HttpException(
         'New date must be in the future',
@@ -217,8 +257,26 @@ export class AppoimentsService {
       );
     }
 
+    const conflict = await this.appoimentsModel.findOne({
+      where: {
+        doctor_id: appointment.doctor_id,
+        company_id: companyId,
+        dateTime: newDateTime,
+        status: {
+          [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+        },
+        appoiments_id: { [Op.ne]: appoiments_id },
+      },
+    });
+    if (conflict) {
+      throw new HttpException(
+        'This time slot is already booked for this doctor.',
+        HttpStatus.CONFLICT,
+      );
+    }
+
     await this.appoimentsModel.update(
-      { dateTime: newDateTime },
+      { dateTime: newDateTime }, // string
       { where: { appoiments_id, company_id: companyId } },
     );
     return { message: 'Appointment rescheduled successfully' };
@@ -302,6 +360,7 @@ export class AppoimentsService {
       order: [['name', 'ASC']],
       attributes: [
         'doctor_id',
+        'user_id',
         'name',
         'lastName',
         'crm',
@@ -326,15 +385,36 @@ export class AppoimentsService {
     const startDay = new Date(`${ymd}T00:00:00`);
     const endDay = new Date(`${ymd}T23:59:59`);
 
-    const appointments = await this.appoimentsModel.findAll({
+    const resolvedDoctorId = await this.resolveDoctorId(doctor_id, companyId);
+
+    let appointments = await this.appoimentsModel.findAll({
       where: {
-        doctor_id,
+        doctor_id: resolvedDoctorId,
         company_id: companyId,
+        status: {
+          [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+        },
         dateTime: { [Op.between]: [startDay, endDay] },
       },
+      attributes: ['dateTime', 'status'],
     });
 
-    // Mantenha a mesma grade que você já usa no admin (ou adicione 08:30/10:30/15:30 se quiser)
+    if (appointments.length === 0) {
+      appointments = await this.appoimentsModel.findAll({
+        where: {
+          doctor_id: resolvedDoctorId,
+          status: {
+            [Op.notIn]: [
+              AppointmentStatus.CANCELLED,
+              AppointmentStatus.NO_SHOW,
+            ],
+          },
+          dateTime: { [Op.between]: [startDay, endDay] },
+        },
+        attributes: ['dateTime', 'status'],
+      });
+    }
+
     const availableSlots = [
       '08:00',
       '09:00',
@@ -345,22 +425,34 @@ export class AppoimentsService {
       '16:00',
     ];
 
-    const takenHours = appointments
-      .map((a) => {
-        const raw = (a as any)?.dateTime;
-        const dt = raw instanceof Date ? raw : new Date(raw);
-        if (!(dt instanceof Date) || isNaN(dt.getTime())) {
-          // segurança: ignora registros ruins para não estourar RangeError
-          // console.error(`Invalid dateTime on appoiment:`, raw);
-          return null;
-        }
-        const hh = String(dt.getHours()).padStart(2, '0');
-        const mm = String(dt.getMinutes()).padStart(2, '0');
-        return `${hh}:${mm}`;
-      })
-      .filter((x): x is string => Boolean(x));
+    const takenHours = Array.from(
+      new Set(
+        appointments
+          .map((a) => {
+            const raw = (a as any)?.dateTime;
+            const dt = raw instanceof Date ? raw : new Date(raw);
+            if (!(dt instanceof Date) || isNaN(dt.getTime())) return null;
+            const hh = String(dt.getHours()).padStart(2, '0');
+            const mm = String(dt.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+          })
+          .filter((x): x is string => Boolean(x)),
+      ),
+    );
 
-    const freeHours = availableSlots.filter((h) => !takenHours.includes(h));
+    let freeHours = availableSlots.filter((h) => !takenHours.includes(h));
+
+    const today = new Date();
+    const todayYMD = `${today.getFullYear()}-${String(
+      today.getMonth() + 1,
+    ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    if (ymd === todayYMD) {
+      const nowMin = today.getHours() * 60 + today.getMinutes();
+      freeHours = freeHours.filter((h) => {
+        const [hh, mm] = h.split(':').map((n) => parseInt(n, 10));
+        return hh * 60 + mm > nowMin;
+      });
+    }
 
     return { available: freeHours, taken: takenHours };
   }
@@ -378,15 +470,14 @@ export class AppoimentsService {
 Você é um assistente médico especializado em triagem de urgências. 
 Classifique o nível de urgência de acordo com os sintomas abaixo em:
 
-- HIGH: risco imediato, precisa de atendimento urgente (ex: convulsão, dor no peito intensa, sangramento abundante)
-- MEDIUM: sintomas preocupantes, mas não emergenciais (ex: febre alta, dor moderada, infecção)
-- LOW: sintomas leves ou de rotina (ex: resfriado, pequenas dores)
+- HIGH: risco imediato, precisa de atendimento urgente
+- MEDIUM: sintomas preocupantes, mas não emergenciais
+- LOW: sintomas leves ou de rotina
 
 Nota do paciente: "${notes}"
 
 Retorne apenas HIGH, MEDIUM ou LOW.
 `;
-
       const result = await model.generateContent(prompt);
       const response = result.response.text().trim().toUpperCase();
 
@@ -410,8 +501,9 @@ Retorne apenas HIGH, MEDIUM ou LOW.
         patient_id: patientId,
         company_id: companyId,
         status: {
-          [Op.ne]: AppointmentStatus.COMPLETED,
+          [Op.in]: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
         },
+        dateTime: { [Op.gt]: new Date() },
       },
     });
 
