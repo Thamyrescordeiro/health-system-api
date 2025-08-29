@@ -53,7 +53,11 @@ export class UserService {
 
   async deactivateUser(userId: string) {
     const user = await this.userModel.findByPk(userId, {
-      include: [Patient, Doctor, Admin],
+      include: [
+        { model: Admin, as: 'admin' },
+        { model: Doctor, as: 'doctor' },
+        { model: Patient, as: 'patient' },
+      ],
     });
 
     if (!user) {
@@ -62,16 +66,40 @@ export class UserService {
 
     await user.update({ active: false });
 
-    if (user.patient) await user.patient.update({ active: false });
-    if (user.doctor) await user.doctor.update({ active: false });
-    if (user.admin) await (user.admin as Admin).update({ active: false });
+    // 🔹 Se for admin
+    if (user.admin) {
+      await this.adminModel.update(
+        { active: false },
+        { where: { admin_id: user.admin.admin_id } },
+      );
+    }
 
-    return { message: 'User and related profiles deactivated' };
+    // 🔹 Se for doctor
+    if (user.doctor) {
+      await this.doctorModel.update(
+        { active: false },
+        { where: { doctor_id: user.doctor.doctor_id } },
+      );
+    }
+
+    // 🔹 Se for patient
+    if (user.patient) {
+      await this.patientModel.update(
+        { active: false },
+        { where: { patient_id: user.patient.patient_id } },
+      );
+    }
+
+    return { message: 'User deactivated successfully', user };
   }
 
   async activateUser(userId: string) {
     const user = await this.userModel.findByPk(userId, {
-      include: [Patient, Doctor, Admin],
+      include: [
+        { model: Admin, as: 'admin' },
+        { model: Doctor, as: 'doctor' },
+        { model: Patient, as: 'patient' },
+      ],
     });
 
     if (!user) {
@@ -80,10 +108,27 @@ export class UserService {
 
     await user.update({ active: true });
 
-    if (user.patient) await user.patient.update({ active: true });
-    if (user.doctor) await user.doctor.update({ active: true });
-    if (user.admin) await (user.admin as Admin).update({ active: true });
+    if (user.admin) {
+      await this.adminModel.update(
+        { active: true },
+        { where: { admin_id: user.admin.admin_id } },
+      );
+    }
 
-    return { message: 'User and related profiles activated' };
+    if (user.doctor) {
+      await this.doctorModel.update(
+        { active: true },
+        { where: { doctor_id: user.doctor.doctor_id } },
+      );
+    }
+
+    if (user.patient) {
+      await this.patientModel.update(
+        { active: true },
+        { where: { patient_id: user.patient.patient_id } },
+      );
+    }
+
+    return { message: 'User activated successfully', user };
   }
 }
