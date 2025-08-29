@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -11,14 +19,30 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post('create')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async create(@Body() user: CreateUserDto) {
     return await this.userService.create(user);
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findAll() {
     return await this.userService.findAll();
+  }
+
+  @Patch('/:userId/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'super_admin')
+  async deactivateUser(@Param('userId') userId: string) {
+    return this.userService.deactivateUser(userId);
+  }
+
+  @Patch('/:userId/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'super_admin')
+  async activateUser(@Param('userId') userId: string) {
+    return this.userService.activateUser(userId);
   }
 }

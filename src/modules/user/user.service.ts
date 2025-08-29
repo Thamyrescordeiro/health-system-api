@@ -9,7 +9,12 @@ import { UpdateUser } from './dtos/update-user.dto';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel(User) private readonly userModel: typeof User) {}
+  constructor(
+    @InjectModel(User) private readonly userModel: typeof User,
+    @InjectModel(Patient) private readonly patientModel: typeof Patient,
+    @InjectModel(Doctor) private readonly doctorModel: typeof Doctor,
+    @InjectModel(Admin) private readonly adminModel: typeof Admin,
+  ) {}
 
   async create(userDto: CreateUserDto) {
     const existingUser = await this.userModel.findOne({
@@ -54,11 +59,31 @@ export class UserService {
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
+
     await user.update({ active: false });
 
     if (user.patient) await user.patient.update({ active: false });
     if (user.doctor) await user.doctor.update({ active: false });
+    if (user.admin) await (user.admin as Admin).update({ active: false });
 
     return { message: 'User and related profiles deactivated' };
+  }
+
+  async activateUser(userId: string) {
+    const user = await this.userModel.findByPk(userId, {
+      include: [Patient, Doctor, Admin],
+    });
+
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    await user.update({ active: true });
+
+    if (user.patient) await user.patient.update({ active: true });
+    if (user.doctor) await user.doctor.update({ active: true });
+    if (user.admin) await (user.admin as Admin).update({ active: true });
+
+    return { message: 'User and related profiles activated' };
   }
 }

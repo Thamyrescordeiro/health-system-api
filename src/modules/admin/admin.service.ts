@@ -145,7 +145,9 @@ export class AdminService {
   // Doctors //
 
   async findAllDoctors(companyId: string) {
-    return this.doctorModel.findAll({ where: { company_id: companyId } });
+    return this.doctorModel.findAll({
+      where: { company_id: companyId, active: true },
+    });
   }
 
   async findDoctorById(doctor_id: string, companyId: string) {
@@ -155,16 +157,20 @@ export class AdminService {
   }
 
   async findDoctorByCrm(crm: string, companyId: string) {
-    return this.doctorModel.findOne({ where: { crm, company_id: companyId } });
+    return this.doctorModel.findOne({
+      where: { crm, company_id: companyId, active: true },
+    });
   }
 
   async findDoctorByName(name: string, companyId: string) {
-    return this.doctorModel.findOne({ where: { name, company_id: companyId } });
+    return this.doctorModel.findOne({
+      where: { name, company_id: companyId, active: true },
+    });
   }
 
   async findDoctorBySpecialty(specialty: string, companyId: string) {
     return this.doctorModel.findOne({
-      where: { specialty, company_id: companyId },
+      where: { specialty, company_id: companyId, active: true },
     });
   }
 
@@ -200,22 +206,26 @@ export class AdminService {
   }
 
   async findAllPatients(companyId: string) {
-    return this.patientModel.findAll({ where: { company_id: companyId } });
+    return this.patientModel.findAll({
+      where: { company_id: companyId, active: true },
+    });
   }
 
   async findPatientById(patient_id: string, companyId: string) {
     return this.patientModel.findOne({
-      where: { patient_id, company_id: companyId },
+      where: { patient_id, company_id: companyId, active: true },
     });
   }
 
   async findPatientByCpf(cpf: string, companyId: string) {
-    return this.patientModel.findOne({ where: { cpf, company_id: companyId } });
+    return this.patientModel.findOne({
+      where: { cpf, company_id: companyId, active: true },
+    });
   }
 
   async findPatientByName(name: string, companyId: string) {
     return this.patientModel.findOne({
-      where: { name, company_id: companyId },
+      where: { name, company_id: companyId, active: true },
     });
   }
 

@@ -206,7 +206,7 @@ export class AppoimentsService {
 
   async findByPatient(userId: string, companyId: string) {
     const patient = await this.patientModel.findOne({
-      where: { user_id: userId, company_id: companyId },
+      where: { user_id: userId, company_id: companyId, active: true },
     });
 
     if (!patient) return [];

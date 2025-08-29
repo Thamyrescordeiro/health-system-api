@@ -20,6 +20,7 @@ import { Company } from '../Company/company.entity';
 
 @Table({ tableName: 'users', timestamps: true })
 export class User extends Model<User, CreateUserDto> {
+  admin: any;
   async comparePassword(pass: string): Promise<boolean> {
     return await bcrypt.compare(pass, this.password);
   }

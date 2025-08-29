@@ -41,16 +41,25 @@ export class AuthService {
 
   async validateUser(email: string, pass: string): Promise<UserPayload> {
     const user = await this.userModel.findOne({ where: { email } });
-    if (user && (await user.comparePassword(pass))) {
-      const result = user.get({ plain: true });
-      return {
-        user_id: result.user_id,
-        email: result.email,
-        role: result.role,
-        company_id: result.company_id || '',
-      };
+    if (!user) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
     }
-    throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+
+    if (!user.active) {
+      throw new HttpException('User is deactivated', HttpStatus.FORBIDDEN);
+    }
+
+    const isPasswordValid = await user.comparePassword(pass);
+    if (!isPasswordValid) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    }
+
+    return {
+      user_id: user.user_id,
+      email: user.email,
+      role: user.role,
+      company_id: user.company_id || '',
+    };
   }
 
   login(user: UserPayload & { company_id: string }) {

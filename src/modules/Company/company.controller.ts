@@ -6,6 +6,7 @@ import {
   Query,
   Param,
   UseGuards,
+  Patch,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dtos/create-company.dto';
@@ -31,10 +32,17 @@ export class CompanyController {
     return this.companyService.searchByName(query);
   }
 
-  @Post(':id/deactivate')
+  @Patch('/:companyId/deactivate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
-  async deactivateCompany(@Param('id') companyId: string) {
-    return this.companyService.deactivate(companyId);
+  async deactivateCompany(@Param('companyId') companyId: string) {
+    return this.companyService.deactivateCompany(companyId);
+  }
+
+  @Patch('/:companyId/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin')
+  async activateCompany(@Param('companyId') companyId: string) {
+    return this.companyService.activateCompany(companyId);
   }
 }
