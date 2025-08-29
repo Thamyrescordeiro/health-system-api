@@ -17,10 +17,10 @@ import { CreateUserDto } from './dtos/create-user.dto';
 import { Patient } from '../patient/patient.entity';
 import { Doctor } from '../doctors/doctors.entity';
 import { Company } from '../Company/company.entity';
+import { Admin } from '../admin/admin.entity';
 
 @Table({ tableName: 'users', timestamps: true })
 export class User extends Model<User, CreateUserDto> {
-  admin: any;
   async comparePassword(pass: string): Promise<boolean> {
     return await bcrypt.compare(pass, this.password);
   }
@@ -84,4 +84,7 @@ export class User extends Model<User, CreateUserDto> {
 
   @HasOne(() => Doctor)
   doctor: Doctor;
+
+  @HasOne(() => Admin)
+  admin: Admin;
 }
