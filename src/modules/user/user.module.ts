@@ -5,9 +5,13 @@ import { UserService } from './user.service';
 import { Patient } from '../patient/patient.entity';
 import { Doctor } from '../doctors/doctors.entity';
 import { UserController } from './user.controller';
+import { Admin } from '../admin/admin.entity';
+import { Company } from '../Company/company.entity';
 
 @Module({
-  imports: [SequelizeModule.forFeature([User, Patient, Doctor])],
+  imports: [
+    SequelizeModule.forFeature([User, Patient, Doctor, Admin, Company]),
+  ],
   controllers: [UserController],
   providers: [UserService],
   exports: [UserService, SequelizeModule],
