@@ -412,12 +412,13 @@ export class AdminService {
     newDateTime: string,
     patientId: string,
     companyId: string,
+    userRole: 'patient' | 'doctor' | 'admin',
   ) {
     const appointment = await this.findAppoimentsById(
       appoiments_id,
       patientId,
       companyId,
-      'patient',
+      userRole,
     );
 
     if (!appointment) {
@@ -435,12 +436,13 @@ export class AdminService {
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    await this.appoimentsModel.update(
-      { dateTime: newDateTime },
-      { where: { appoiments_id, company_id: companyId } },
-    );
-    return { message: 'Appointment rescheduled successfully' };
+    if (userRole === 'admin') {
+      await this.appoimentsModel.update(
+        { dateTime: newDateTime },
+        { where: { appoiments_id, company_id: companyId } },
+      );
+      return { message: 'Appointment rescheduled successfully' };
+    }
   }
 
   async updateAppoiment(

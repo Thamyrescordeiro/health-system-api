@@ -30,7 +30,7 @@ import { InjectModel } from '@nestjs/sequelize';
 interface RequestUser {
   user_id: string;
   role: 'patient' | 'doctor' | 'admin';
-  companyId: string;
+  company_id: string;
 }
 
 @Controller('admins')
@@ -78,8 +78,8 @@ export class AdminController {
   @Get('company/:companyId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
-  async listAdmins(@Param('companyId') companyId: string) {
-    return this.adminService.listAdminsByCompany(companyId);
+  async listAdmins(@Param('companyId') company_id: string) {
+    return this.adminService.listAdminsByCompany(company_id);
   }
 
   // Companies //
@@ -334,7 +334,7 @@ export class AdminController {
     const user = req.user;
     const userId = user.user_id;
     const userRole = user.role;
-    const companyId = user.companyId;
+    const companyId = user.company_id;
     return await this.adminService.findAppoimentsById(
       appoiments_id,
       userId,
@@ -353,12 +353,14 @@ export class AdminController {
   ) {
     const user = req.user;
     const patientId = user.user_id;
-    const companyId = user.companyId;
+    const companyId = user.company_id;
+    const userRole = user.role;
     return await this.adminService.reschedule(
       id,
       newDateTime,
       patientId,
       companyId,
+      userRole,
     );
   }
   @Patch('appoiments/:id')
