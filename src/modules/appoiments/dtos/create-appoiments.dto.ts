@@ -12,6 +12,7 @@ import { IsFutureDateConstraint } from './types';
 import { AppointmentStatus } from './types';
 import { Type } from 'class-transformer';
 import { CreatePatientInlineDto } from 'src/modules/patient/dtos/Create-patientInline.dto';
+import { UrgencyLevel } from '../appoiments.entity';
 
 export class CreateAppoimentsDto {
   @IsNotEmpty()
@@ -25,6 +26,9 @@ export class CreateAppoimentsDto {
   @IsOptional()
   @IsString()
   notes: string;
+
+  @IsOptional()
+  urgencyLevel?: UrgencyLevel;
 
   @IsUUID()
   doctor_id: string;

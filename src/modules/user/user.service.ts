@@ -6,6 +6,7 @@ import { Patient } from '../patient/patient.entity';
 import { Doctor } from '../doctors/doctors.entity';
 import { Admin } from '../admin/admin.entity';
 import { UpdateUser } from './dtos/update-user.dto';
+import { Transaction } from 'sequelize';
 
 @Injectable()
 export class UserService {
@@ -47,83 +48,109 @@ export class UserService {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
 
+    if (updateData.email && updateData.email !== user.email) {
+      const exists = await this.userModel.findOne({
+        where: { email: updateData.email },
+      });
+      if (exists) {
+        throw new HttpException('Email already in use', HttpStatus.BAD_REQUEST);
+      }
+    }
+
     await user.update(updateData);
-    return user;
+
+    return this.userModel.findByPk(userId, {
+      include: [
+        { model: Admin, as: 'admin' },
+        { model: Doctor, as: 'doctor' },
+        { model: Patient, as: 'patient' },
+      ],
+    });
+  }
+
+  private async syncProfilesActive(
+    userId: string,
+    active: boolean,
+    t?: Transaction,
+  ) {
+    await Promise.all([
+      this.adminModel.update(
+        { active },
+        { where: { user_id: userId }, transaction: t },
+      ),
+      this.doctorModel.update(
+        { active },
+        { where: { user_id: userId }, transaction: t },
+      ),
+      this.patientModel.update(
+        { active },
+        { where: { user_id: userId }, transaction: t },
+      ),
+    ]);
   }
 
   async deactivateUser(userId: string) {
-    const user = await this.userModel.findByPk(userId, {
+    const user = await this.userModel.findByPk(userId);
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const wasActive = !!user.active;
+
+    if (user.active) {
+      await user.update({ active: false /* , transaction: t */ });
+    }
+
+    await this.syncProfilesActive(user.user_id, false /* , t */);
+
+    const fresh = await this.userModel.findByPk(userId, {
       include: [
         { model: Admin, as: 'admin' },
         { model: Doctor, as: 'doctor' },
         { model: Patient, as: 'patient' },
       ],
+      // transaction: t,
     });
 
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-    }
-
-    await user.update({ active: false });
-
-    if (user.admin) {
-      await this.adminModel.update(
-        { active: false },
-        { where: { admin_id: user.admin.admin_id } },
-      );
-    }
-    if (user.doctor) {
-      await this.doctorModel.update(
-        { active: false },
-        { where: { doctor_id: user.doctor.doctor_id } },
-      );
-    }
-    if (user.patient) {
-      await this.patientModel.update(
-        { active: false },
-        { where: { patient_id: user.patient.patient_id } },
-      );
-    }
-
-    return { message: 'User deactivated successfully', user };
+    return {
+      message: wasActive
+        ? 'User deactivated successfully (profiles synced)'
+        : 'User already inactive (profiles synced)',
+      user: fresh!,
+    };
+    // });
   }
 
   async activateUser(userId: string) {
-    const user = await this.userModel.findByPk(userId, {
+    // return this.sequelize.transaction(async (t) => {
+    const user = await this.userModel.findByPk(userId);
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const wasInactive = !user.active;
+
+    if (!user.active) {
+      await user.update({ active: true /* , transaction: t */ });
+    }
+
+    await this.syncProfilesActive(user.user_id, true /* , t */);
+
+    const fresh = await this.userModel.findByPk(userId, {
       include: [
         { model: Admin, as: 'admin' },
         { model: Doctor, as: 'doctor' },
         { model: Patient, as: 'patient' },
       ],
+      // transaction: t,
     });
 
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-    }
-
-    await user.update({ active: true });
-
-    if (user.admin) {
-      await this.adminModel.update(
-        { active: true },
-        { where: { admin_id: user.admin.admin_id } },
-      );
-    }
-
-    if (user.doctor) {
-      await this.doctorModel.update(
-        { active: true },
-        { where: { doctor_id: user.doctor.doctor_id } },
-      );
-    }
-
-    if (user.patient) {
-      await this.patientModel.update(
-        { active: true },
-        { where: { patient_id: user.patient.patient_id } },
-      );
-    }
-
-    return { message: 'User activated successfully', user };
+    return {
+      message: wasInactive
+        ? 'User activated successfully (profiles synced)'
+        : 'User already active (profiles synced)',
+      user: fresh!,
+    };
+    // });
   }
 }

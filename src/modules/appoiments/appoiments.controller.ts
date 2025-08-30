@@ -125,4 +125,11 @@ export class AppoimentsController {
       user.user_id,
     );
   }
+
+  @Patch('cancel/:id')
+  @Roles('patient')
+  async cancel(@Param('id') id: string, @Req() req: Request) {
+    const { company_id } = req.user as RequestUser;
+    return this.appoimentsService.cancelAppoiment(id, company_id);
+  }
 }

@@ -38,8 +38,7 @@ export class AppoimentsService {
     if (!doctorExists) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
-
-    if (!doctorExists.active || !doctorExists.user?.active) {
+    if (doctorExists.active === false || doctorExists.user?.active === false) {
       throw new HttpException(
         'Doctor is deactivated and cannot receive appointments',
         HttpStatus.BAD_REQUEST,
@@ -53,8 +52,10 @@ export class AppoimentsService {
     if (!patientExists) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
-
-    if (!patientExists.active || !patientExists.user?.active) {
+    if (
+      patientExists.active === false ||
+      patientExists.user?.active === false
+    ) {
       throw new HttpException(
         'Patient is deactivated and cannot book appointments',
         HttpStatus.BAD_REQUEST,
@@ -71,6 +72,8 @@ export class AppoimentsService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    const slot = this.toLocalIsoMinute(when);
+    if (!slot) throw new HttpException('Invalid date', HttpStatus.BAD_REQUEST);
 
     const hasPending = await this.hasPendingAppointment(
       patientExists.getDataValue('patient_id'),
@@ -87,8 +90,8 @@ export class AppoimentsService {
     const existingAppointment = await this.appoimentsModel.findOne({
       where: {
         doctor_id,
-        dateTime,
         company_id: companyId,
+        dateTime: slot,
         status: {
           [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
         },
@@ -100,19 +103,20 @@ export class AppoimentsService {
         HttpStatus.CONFLICT,
       );
     }
-
-    let urgencyLevel: UrgencyLevel | null = null;
+    let urgencyLevel: UrgencyLevel = UrgencyLevel.LOW;
     if (notes) {
-      urgencyLevel = await this.classifyUrgency(notes);
+      const classified = await this.classifyUrgency(notes);
+      urgencyLevel = classified ?? UrgencyLevel.LOW;
     }
+
     const newAppointment: CreateAppoimentsDto & {
       patient_id: string;
       company_id: string;
-      urgencyLevel: UrgencyLevel | null;
+      urgencyLevel: UrgencyLevel;
     } = {
       patient_id: patientExists.getDataValue('patient_id'),
       doctor_id,
-      dateTime,
+      dateTime: slot,
       status,
       notes,
       urgencyLevel,
@@ -130,14 +134,13 @@ export class AppoimentsService {
     await this.emailService.sendMail(
       patientEmail,
       'Consulta Confirmada',
-      `Olá ${patientExists.name}, sua consulta com Dr(a). ${doctorExists.name} foi agendada para ${new Date(dateTime).toLocaleString()}.`,
+      `Olá ${patientExists.name}, sua consulta com Dr(a). ${doctorExists.name} foi agendada para ${new Date(slot).toLocaleString()}.`,
     );
-
     if (doctorExists.user?.email) {
       await this.emailService.sendMail(
         doctorExists.user.email,
         'Nova Consulta Agendada',
-        `Olá Dr(a). ${doctorExists.name}, você tem uma nova consulta com ${patientExists.name} no dia ${new Date(dateTime).toLocaleString()}.`,
+        `Olá Dr(a). ${doctorExists.name}, você tem uma nova consulta com ${patientExists.name} no dia ${new Date(slot).toLocaleString()}.`,
       );
     }
 
@@ -249,13 +252,7 @@ export class AppoimentsService {
       include: [Patient, Doctor],
     });
   }
-
   async reschedule(appoimentId: string, dateTime: Date, userId: string) {
-    console.log('[Reschedule] Iniciando reagendamento...');
-    console.log('appoimentId recebido:', appoimentId);
-    console.log('userId recebido:', userId);
-    console.log('Novo dateTime recebido:', dateTime);
-
     const appoiment = await this.appoimentsModel.findOne({
       where: { appoiments_id: appoimentId },
       include: [Patient, Doctor],
@@ -265,23 +262,59 @@ export class AppoimentsService {
       throw new HttpException('Appoiment not found', HttpStatus.NOT_FOUND);
     }
 
+    if (!appoiment.patient || appoiment.patient.user_id !== userId) {
+      throw new HttpException(
+        'You are not allowed to reschedule this appoiment',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const newDate = new Date(dateTime);
+    if (isNaN(newDate.getTime())) {
+      throw new HttpException('Invalid date', HttpStatus.BAD_REQUEST);
+    }
+    if (newDate <= new Date()) {
+      throw new HttpException(
+        'New date must be in the future',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const slot = this.toLocalIsoMinute(newDate);
+    if (!slot) throw new HttpException('Invalid date', HttpStatus.BAD_REQUEST);
+
+    if (appoiment.doctor && !appoiment.doctor.active) {
+      throw new HttpException(
+        'Doctor is deactivated and cannot receive appointments',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (appoiment.patient && !appoiment.patient.active) {
+      throw new HttpException(
+        'Patient is deactivated and cannot book appointments',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const conflict = await this.appoimentsModel.findOne({
       where: {
         doctor_id: appoiment.doctor_id,
-        dateTime: dateTime.toISOString(),
+        company_id: appoiment.company_id,
+        dateTime: slot,
+        status: {
+          [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+        },
+        appoiments_id: { [Op.ne]: appoimentId },
       },
     });
-
     if (conflict) {
       throw new HttpException('Time slot already booked', HttpStatus.CONFLICT);
     }
 
     await this.appoimentsModel.update(
-      { dateTime: dateTime.toISOString() },
+      { dateTime: slot },
       { where: { appoiments_id: appoimentId } },
     );
-
-    console.log('[Reschedule] Agendamento atualizado com sucesso.');
 
     const updatedAppoiment = await this.appoimentsModel.findOne({
       where: { appoiments_id: appoimentId },
@@ -294,6 +327,7 @@ export class AppoimentsService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+
     return updatedAppoiment;
   }
 
@@ -339,18 +373,15 @@ export class AppoimentsService {
     return updatedAppoiment;
   }
 
-  async cancelAppoiment(appoiments_id: string, companyId: string) {
-    const appoiment = await this.appoimentsModel.findOne({
-      where: { appoiments_id, company_id: companyId },
-    });
-    if (!appoiment) {
+  async cancelAppoiment(appoiments_id: string, companyId?: string) {
+    const appt = await this.appoimentsModel.findByPk(appoiments_id);
+    if (!appt) {
       throw new HttpException('Appointment not found', HttpStatus.NOT_FOUND);
     }
-    await this.appoimentsModel.update(
-      { status: AppointmentStatus.CANCELLED },
-      { where: { appoiments_id, company_id: companyId } },
-    );
-
+    if (companyId && appt.company_id !== companyId) {
+      throw new HttpException('Appointment not found', HttpStatus.NOT_FOUND);
+    }
+    await appt.update({ status: AppointmentStatus.CANCELLED });
     return { message: 'Appointment cancelled successfully' };
   }
 
@@ -541,5 +572,16 @@ Retorne apenas HIGH, MEDIUM ou LOW.
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
     const m = date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     return m ? `${m[3]}-${m[2]}-${m[1]}` : date;
+  }
+
+  private toLocalIsoMinute(d: Date | string): string {
+    const dt = typeof d === 'string' ? new Date(d) : d;
+    if (isNaN(dt.getTime())) return '';
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const mm = String(dt.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day}T${hh}:${mm}:00`;
   }
 }

@@ -132,10 +132,15 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findAllDoctors(
-    @Request() req: Request & { user: { company_id: string } },
+    @Req() req: Request & { user: { company_id: string } },
+    @Query('status') status?: 'all' | 'active' | 'inactive',
   ) {
     const companyId = req.user.company_id;
-    return await this.adminService.findAllDoctors(companyId);
+    const norm = (status || 'all').toString().toLowerCase() as
+      | 'all'
+      | 'active'
+      | 'inactive';
+    return await this.adminService.findAllDoctors(companyId, { status: norm });
   }
 
   @Get('doctors/:id')
@@ -201,9 +206,14 @@ export class AdminController {
   @Roles('admin')
   async findAllPatients(
     @Req() req: Request & { user: { company_id: string } },
+    @Query('status') status?: 'all' | 'active' | 'inactive', // 👈
   ) {
     const companyId = req.user.company_id;
-    return await this.adminService.findAllPatients(companyId);
+    const norm = (status || 'all').toString().toLowerCase() as
+      | 'all'
+      | 'active'
+      | 'inactive';
+    return await this.adminService.findAllPatients(companyId, { status: norm });
   }
 
   @Get('patients/:id')

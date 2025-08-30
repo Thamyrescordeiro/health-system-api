@@ -1,9 +1,10 @@
+// src/modules/admin/admin.service.ts
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Admin } from './admin.entity';
 import { Doctor } from '../doctors/doctors.entity';
 import { Patient } from '../patient/patient.entity';
-import { Appoiments } from '../appoiments/appoiments.entity';
+import { Appoiments, UrgencyLevel } from '../appoiments/appoiments.entity';
 import { UpdateDoctorDto } from '../doctors/dtos/update-doctors.dto';
 import { PatientService } from '../patient/patient.service';
 import { UpdatePatientDto } from '../patient/dtos/update-patient.dto';
@@ -20,6 +21,9 @@ import { User } from '../user/user.entity';
 import { CompanyService } from '../Company/company.service';
 import { CreatePatientInlineDto } from '../patient/dtos/Create-patientInline.dto';
 import { RegisterAdminDto } from '../auth/dtos/register-admin.dto';
+
+type StatusFilter = 'all' | 'active' | 'inactive';
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -37,7 +41,28 @@ export class AdminService {
     private readonly companyService: CompanyService,
   ) {}
 
-  // Admin //
+  private buildPatientQuery(companyId: string, status: StatusFilter) {
+    const where: any = { company_id: companyId };
+
+    const include = [
+      {
+        model: this.userModel,
+        as: 'user', 
+        attributes: ['user_id', 'active'], 
+        required: false, 
+      },
+    ];
+
+    if (status === 'active') {
+      where[Op.and] = [{ active: true }, { '$user.active$': true }];
+    } else if (status === 'inactive') {
+      where[Op.or] = [{ active: false }, { '$user.active$': false }];
+    }
+
+    return { where, include };
+  }
+
+  //Admin//
   async updateAdmin(adminId: string, dto: Partial<RegisterAdminDto>) {
     const user = await this.userModel.findByPk(adminId);
     if (!user) throw new HttpException('Admin not found', HttpStatus.NOT_FOUND);
@@ -69,34 +94,21 @@ export class AdminService {
       `Olá ${admin.name}, sua nova senha é: ${newPassword}`,
     );
 
-    return {
-      message: 'Password reset and email sent',
-    };
+    return { message: 'Password reset and email sent' };
   }
 
   async findAllAdmins() {
     return this.adminModel.findAll({
-      include: [
-        {
-          model: User,
-          attributes: ['email'],
-        },
-      ],
+      include: [{ model: User, attributes: ['email'] }],
     });
   }
 
   async listAdminsByCompany(companyId: string) {
     return this.adminModel.findAll({
-      include: [
-        {
-          model: User,
-          where: { company_id: companyId },
-        },
-      ],
+      include: [{ model: User, where: { company_id: companyId } }],
     });
   }
-  // Companies //
-
+//Companies//
   async findAllCompanies() {
     return this.companyModel.findAll();
   }
@@ -142,11 +154,33 @@ export class AdminService {
     });
   }
 
-  // Doctors //
+  // Doctors//
+  async findAllDoctors(
+    companyId: string,
+    opts: { status?: StatusFilter } = {},
+  ) {
+    const status = (opts.status || 'all').toLowerCase() as StatusFilter;
 
-  async findAllDoctors(companyId: string) {
+    const where: any = { company_id: companyId };
+
+    if (status === 'active') {
+      where[Op.and] = [{ active: true }, { '$user.active$': true }];
+    } else if (status === 'inactive') {
+      where[Op.or] = [{ active: false }, { '$user.active$': false }];
+    }
+
     return this.doctorModel.findAll({
-      where: { company_id: companyId, active: true },
+      where,
+      include: [
+        {
+          model: this.userModel,
+          as: 'user',
+          attributes: ['user_id', 'active'],
+          required: false,
+        },
+      ],
+      order: [['name', 'ASC']],
+      subQuery: false, 
     });
   }
 
@@ -194,15 +228,12 @@ export class AdminService {
       if (!doctor.user) {
         throw new HttpException('User not found', HttpStatus.NOT_FOUND);
       }
-
       await doctor.user.update({ active: updateDoctor.active });
     }
 
     return doctor;
   }
-
-  // Patients //
-
+// Patients//
   async create(data: CreatePatientInlineDto & { company_id: string }) {
     const patientData = {
       ...data,
@@ -211,27 +242,76 @@ export class AdminService {
     return this.patientModel.create(patientData);
   }
 
-  async findAllPatients(companyId: string) {
+  async findAllPatients(
+    companyId: string,
+    opts: { status?: StatusFilter } = {},
+  ) {
+    const status = (opts.status || 'all').toLowerCase() as StatusFilter;
+
+    const where: any = { company_id: companyId };
+    if (status === 'active') {
+      where[Op.and] = [{ active: true }, { '$user.active$': true }];
+    } else if (status === 'inactive') {
+      where[Op.or] = [{ active: false }, { '$user.active$': false }];
+    }
+
     return this.patientModel.findAll({
-      where: { company_id: companyId, active: true },
+      where,
+      include: [
+        {
+          model: this.userModel,
+          as: 'user', 
+          attributes: ['user_id', 'active'],
+          required: false,
+        },
+      ],
+      order: [['name', 'ASC']],
+      subQuery: false,
     });
   }
 
-  async findPatientById(patient_id: string, companyId: string) {
+  async findPatientById(
+    patient_id: string,
+    companyId: string,
+    status: StatusFilter = 'all',
+  ) {
+    const { where, include } = this.buildPatientQuery(companyId, status);
     return this.patientModel.findOne({
-      where: { patient_id, company_id: companyId, active: true },
+      where: { ...where, patient_id },
+      include,
     });
   }
 
-  async findPatientByCpf(cpf: string, companyId: string) {
+  async findPatientByCpf(
+    cpf: string,
+    companyId: string,
+    status: StatusFilter = 'all',
+  ) {
+    const { where, include } = this.buildPatientQuery(companyId, status);
     return this.patientModel.findOne({
-      where: { cpf, company_id: companyId, active: true },
+      where: { ...where, cpf },
+      include,
     });
   }
 
-  async findPatientByName(name: string, companyId: string) {
-    return this.patientModel.findOne({
-      where: { name, company_id: companyId, active: true },
+  async findPatientByName(
+    name: string,
+    companyId: string,
+    status: StatusFilter = 'all',
+  ) {
+    const { where, include } = this.buildPatientQuery(companyId, status);
+    const term = `%${name}%`;
+    return this.patientModel.findAll({
+      where: {
+        ...where,
+        [Op.or]: [
+          { name: { [Op.iLike]: term } },
+          { lastName: { [Op.iLike]: term } },
+        ],
+      },
+      include,
+      order: [['name', 'ASC']],
+      subQuery: false,
     });
   }
 
@@ -240,7 +320,9 @@ export class AdminService {
     updatePatient: Partial<UpdatePatientDto>,
     companyId: string,
   ) {
-    const patient = await this.findPatientById(patient_id, companyId);
+    const patient = await this.patientModel.findOne({
+      where: { patient_id, company_id: companyId },
+    });
     if (!patient) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
     }
@@ -249,7 +331,9 @@ export class AdminService {
   }
 
   async desactivePatient(patient_id: string, companyId: string) {
-    const patient = await this.findPatientById(patient_id, companyId);
+    const patient = await this.patientModel.findOne({
+      where: { patient_id, company_id: companyId },
+    });
     if (!patient) {
       throw new HttpException('patient not found', HttpStatus.NOT_FOUND);
     }
@@ -257,7 +341,7 @@ export class AdminService {
     return { message: 'Patient desactivated successfully' };
   }
 
-  // Appoiments //
+  // --------------------------- Appointments -------------------------
   async createAppoiment(
     appoiment: CreateAppoimentsDto,
     userId: string,
@@ -274,8 +358,14 @@ export class AdminService {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
 
-    let patientRecord: Patient | null;
+    if (!doctorExists.active || !doctorExists.user?.active) {
+      throw new HttpException(
+        'Doctor is deactivated and cannot receive appointments',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
+    let patientRecord: Patient | null;
     if (patient_id) {
       patientRecord = await this.patientService.findById(patient_id, companyId);
       if (!patientRecord) {
@@ -286,7 +376,6 @@ export class AdminService {
         const existingPatient = await this.patientModel.findOne({
           where: { cpf: patient.cpf, company_id: companyId },
         });
-
         if (existingPatient) {
           throw new HttpException(
             'cpf is already registered for another patient',
@@ -294,11 +383,7 @@ export class AdminService {
           );
         }
       }
-
-      patientRecord = await this.create({
-        ...patient,
-        company_id: companyId,
-      });
+      patientRecord = await this.create({ ...patient, company_id: companyId });
     } else {
       throw new HttpException(
         'Patient information is required',
@@ -306,32 +391,40 @@ export class AdminService {
       );
     }
 
-    const slot = new Date(dateTime);
-    if (isNaN(slot.getTime())) {
+    const when = new Date(dateTime);
+    if (isNaN(when.getTime())) {
       throw new HttpException('Invalid dateTime', HttpStatus.BAD_REQUEST);
     }
+    if (when <= new Date()) {
+      throw new HttpException(
+        'New date must be in the future',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const slot = AdminService.toLocalIsoMinute(when);
 
-    const slotStart = new Date(slot);
-    slotStart.setSeconds(0, 0);
-    const slotEnd = new Date(slotStart);
-    slotEnd.setMinutes(slotStart.getMinutes() + 1);
-
-    const patientId = patientRecord.patient_id;
-
+    const patientId = (patientRecord as any).patient_id as string;
     const hasPending = await this.appoimentsService.hasPendingAppointment(
       patientId,
       doctor_id,
       companyId,
     );
-
     if (hasPending) {
       throw new HttpException(
         'You must complete your previous appointment with this doctor before booking a new one.',
         HttpStatus.CONFLICT,
       );
     }
+
     const existingAppointment = await this.appoimentsModel.findOne({
-      where: { doctor_id, dateTime, company_id: companyId },
+      where: {
+        doctor_id,
+        company_id: companyId,
+        dateTime: slot,
+        status: {
+          [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+        },
+      },
     });
     if (existingAppointment) {
       throw new HttpException(
@@ -340,15 +433,22 @@ export class AdminService {
       );
     }
 
+    let urgencyLevel: UrgencyLevel | undefined = undefined;
+    if (notes) {
+      urgencyLevel = await this.appoimentsService.classifyUrgency(notes);
+    }
+
     return this.appoimentsModel.create({
       doctor_id,
       patient_id: patientId,
-      dateTime,
+      dateTime: slot,
       status,
       notes,
+      urgencyLevel,
       company_id: companyId,
     });
   }
+
   async findAllAppoiments(companyId: string) {
     return this.appoimentsService.findAll(companyId);
   }
@@ -418,7 +518,7 @@ export class AdminService {
       return [];
     }
     return this.appoimentsModel.findAll({
-      where: { patient_id: patient.patient_id, company_id: companyId },
+      where: { patient_id: (patient as any).patient_id, company_id: companyId },
       include: [Patient, Doctor],
     });
   }
@@ -430,35 +530,69 @@ export class AdminService {
     companyId: string,
     userRole: 'patient' | 'doctor' | 'admin',
   ) {
-    const appointment = await this.findAppoimentsById(
-      appoiments_id,
-      patientId,
-      companyId,
-      userRole,
-    );
-
+    const appointment = await this.appoimentsModel.findOne({
+      where: { appoiments_id, company_id: companyId },
+      include: [Patient, Doctor],
+    });
     if (!appointment) {
       throw new HttpException('Appointment not found', HttpStatus.NOT_FOUND);
     }
 
-    const newDate = new Date(newDateTime);
-    if (isNaN(newDate.getTime())) {
-      throw new HttpException('Invalid birth date', HttpStatus.BAD_REQUEST);
+    if (userRole !== 'admin') {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
     }
 
+    const newDate = new Date(newDateTime);
+    if (isNaN(newDate.getTime())) {
+      throw new HttpException('Invalid date', HttpStatus.BAD_REQUEST);
+    }
     if (newDate <= new Date()) {
       throw new HttpException(
         'New date must be in the future',
         HttpStatus.BAD_REQUEST,
       );
     }
-    if (userRole === 'admin') {
-      await this.appoimentsModel.update(
-        { dateTime: newDateTime },
-        { where: { appoiments_id, company_id: companyId } },
+    const slot = AdminService.toLocalIsoMinute(newDate);
+
+    if (appointment.doctor && appointment.doctor.active === false) {
+      throw new HttpException(
+        'Doctor is deactivated and cannot receive appointments',
+        HttpStatus.BAD_REQUEST,
       );
-      return { message: 'Appointment rescheduled successfully' };
     }
+    if (appointment.patient && appointment.patient.active === false) {
+      throw new HttpException(
+        'Patient is deactivated and cannot book appointments',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const conflict = await this.appoimentsModel.findOne({
+      where: {
+        doctor_id: appointment.doctor_id,
+        company_id: companyId,
+        dateTime: slot,
+        status: {
+          [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+        },
+        appoiments_id: { [Op.ne]: appoiments_id },
+      },
+    });
+    if (conflict) {
+      throw new HttpException('Time slot already booked', HttpStatus.CONFLICT);
+    }
+
+    await this.appoimentsModel.update(
+      { dateTime: slot },
+      { where: { appoiments_id, company_id: companyId } },
+    );
+
+    const updated = await this.appoimentsModel.findOne({
+      where: { appoiments_id, company_id: companyId },
+      include: [Patient, Doctor],
+    });
+
+    return updated ?? { message: 'Appointment rescheduled successfully' };
   }
 
   async updateAppoiment(
@@ -515,10 +649,12 @@ export class AdminService {
       where: {
         doctor_id,
         company_id: companyId,
-        dateTime: {
-          [Op.between]: [startDay, endDay],
+        status: {
+          [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
         },
+        dateTime: { [Op.between]: [startDay, endDay] },
       },
+      attributes: ['dateTime'],
     });
 
     const availableSlots = [
@@ -531,27 +667,37 @@ export class AdminService {
       '16:00',
     ];
 
-    const takenHours = appointments
-      .map((a) => {
-        const dt = new Date(a.dateTime);
-
-        if (isNaN(dt.getTime())) {
-          console.error(`Invalid date: ${a.dateTime}`);
-          return null;
-        }
-        return dt.toISOString().substring(11, 16);
-      })
-      .filter(Boolean);
-
-    const freeHours = availableSlots.filter(
-      (hour) => !takenHours.includes(hour),
+    const takenHours = Array.from(
+      new Set(
+        appointments
+          .map((a) => {
+            const dt = new Date(a.dateTime as unknown as string);
+            if (isNaN(dt.getTime())) return null;
+            const hh = String(dt.getHours()).padStart(2, '0');
+            const mm = String(dt.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+          })
+          .filter((x): x is string => Boolean(x)),
+      ),
     );
 
-    return {
-      available: freeHours,
-      taken: takenHours,
-    };
+    let freeHours = availableSlots.filter((h) => !takenHours.includes(h));
+
+    const today = new Date();
+    const todayYMD = `${today.getFullYear()}-${String(
+      today.getMonth() + 1,
+    ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    if (date === todayYMD) {
+      const nowMin = today.getHours() * 60 + today.getMinutes();
+      freeHours = freeHours.filter((h) => {
+        const [hh, mm] = h.split(':').map((n) => parseInt(n, 10));
+        return hh * 60 + mm > nowMin;
+      });
+    }
+
+    return { available: freeHours, taken: takenHours };
   }
+
   async cancelAppoiment(appoiments_id: string, companyId: string) {
     const appoiment = await this.appoimentsModel.findOne({
       where: { appoiments_id, company_id: companyId },
@@ -607,11 +753,7 @@ export class AdminService {
       month: Record<string, number>;
     };
 
-    const stats: Stats = {
-      day: {},
-      week: {},
-      month: {},
-    };
+    const stats: Stats = { day: {}, week: {}, month: {} };
 
     for (const status of Object.values(AppointmentStatus)) {
       stats.day[status] = await this.appoimentsModel.count({
@@ -641,12 +783,15 @@ export class AdminService {
 
     return stats;
   }
-  private static toLocalIsoMinute(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${y}-${m}-${dd}T${hh}:${mm}:00`;
+
+  private static toLocalIsoMinute(d: Date | string): string {
+    const dt = typeof d === 'string' ? new Date(d) : d;
+    if (isNaN(dt.getTime())) return '';
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const mm = String(dt.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day}T${hh}:${mm}:00`;
   }
 }
