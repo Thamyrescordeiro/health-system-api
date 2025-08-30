@@ -262,36 +262,22 @@ export class AppoimentsService {
     });
 
     if (!appoiment) {
-      console.error(
-        '[Reschedule] Nenhum agendamento encontrado com o ID:',
-        appoimentId,
-      );
       throw new HttpException('Appoiment not found', HttpStatus.NOT_FOUND);
     }
 
-    console.log(
-      '[Reschedule] Agendamento encontrado:',
-      appoiment.appoiments_id,
-    );
-
-    // Verificação de conflito (mesmo horário para o mesmo médico)
     const conflict = await this.appoimentsModel.findOne({
       where: {
         doctor_id: appoiment.doctor_id,
-        dateTime: dateTime.toISOString(), // agora como string
+        dateTime: dateTime.toISOString(),
       },
     });
 
     if (conflict) {
-      console.warn(
-        '[Reschedule] Conflito detectado. Já existe um agendamento nesse horário para o mesmo médico.',
-      );
       throw new HttpException('Time slot already booked', HttpStatus.CONFLICT);
     }
 
-    // Atualizar agendamento
     await this.appoimentsModel.update(
-      { dateTime: dateTime.toISOString() }, // forçando para string
+      { dateTime: dateTime.toISOString() },
       { where: { appoiments_id: appoimentId } },
     );
 
@@ -303,16 +289,11 @@ export class AppoimentsService {
     });
 
     if (!updatedAppoiment) {
-      console.error(
-        '[Reschedule] Erro inesperado: não foi possível recuperar o agendamento após update.',
-      );
       throw new HttpException(
         'Error retrieving updated appoiment',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-
-    console.log('[Reschedule] Retornando agendamento atualizado.');
     return updatedAppoiment;
   }
 

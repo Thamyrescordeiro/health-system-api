@@ -282,7 +282,7 @@ export class AdminController {
   @Post('appoiments/create')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  async createAppointment(
+  async createAppoiment(
     @Body() appoimentsDto: CreateAppoimentsDto,
     @Req() req: Request & { user: { user_id: string; company_id: string } },
   ) {

@@ -66,7 +66,6 @@ export class UserService {
 
     await user.update({ active: false });
 
-    // 🔹 Se for admin
     if (user.admin) {
       await this.adminModel.update(
         { active: false },
@@ -74,7 +73,6 @@ export class UserService {
       );
     }
 
-    // 🔹 Se for doctor
     if (user.doctor) {
       await this.doctorModel.update(
         { active: false },
@@ -82,7 +80,6 @@ export class UserService {
       );
     }
 
-    // 🔹 Se for patient
     if (user.patient) {
       await this.patientModel.update(
         { active: false },
