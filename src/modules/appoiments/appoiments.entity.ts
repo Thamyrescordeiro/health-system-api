@@ -25,48 +25,48 @@ export class Appoiments extends Model<Appoiments, CreateAppoimentsDto> {
   @PrimaryKey
   @Default(DataType.UUIDV4)
   @Column(DataType.UUID)
-  appoiments_id!: string;
+  declare appoiments_id: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
   })
-  dateTime: string;
+  declare dateTime: string;
 
   @Column({
     type: DataType.ENUM(...Object.values(AppointmentStatus)),
     allowNull: false,
   })
-  status: AppointmentStatus;
+  declare status: AppointmentStatus;
 
   @Column({
     type: DataType.STRING,
   })
-  notes: string;
+  declare notes: string;
 
   @Column({
     type: DataType.ENUM(...Object.values(UrgencyLevel)),
     allowNull: true,
   })
-  urgencyLevel: UrgencyLevel;
+  declare urgencyLevel: UrgencyLevel;
 
   @ForeignKey(() => Company)
   @Column(DataType.UUID)
-  company_id: string;
+  declare company_id: string;
 
   @BelongsTo(() => Company)
-  company: Company;
+  declare company: Company;
 
   @ForeignKey(() => Patient)
   @Column({ type: DataType.UUID, allowNull: false })
-  patient_id: string;
+  declare patient_id: string;
 
   @BelongsTo(() => Patient)
-  patient: Patient;
+  declare patient: Patient;
 
   @ForeignKey(() => Doctor)
-  doctor_id: string;
+  declare doctor_id: string;
 
   @BelongsTo(() => Doctor)
-  doctor: Doctor;
+  declare doctor: Doctor;
 }

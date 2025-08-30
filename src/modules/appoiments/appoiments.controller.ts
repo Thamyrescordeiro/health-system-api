@@ -121,16 +121,8 @@ export class AppoimentsController {
     const user = req.user as RequestUser;
     return await this.appoimentsService.reschedule(
       id,
-      newDateTime,
+      new Date(newDateTime),
       user.user_id,
-      user.company_id,
     );
-  }
-
-  @Patch('/cancel/:id')
-  @Roles('admin', 'patient')
-  async cancelAppointment(@Param('id') id: string, @Req() req: Request) {
-    const user = req.user as RequestUser;
-    return await this.appoimentsService.cancelAppoiment(id, user.company_id);
   }
 }

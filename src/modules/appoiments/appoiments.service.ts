@@ -24,7 +24,6 @@ export class AppoimentsService {
     @InjectModel(Patient) private readonly patientModel: typeof Patient,
     @InjectModel(Doctor) private readonly doctorModel: typeof Doctor,
   ) {}
-
   async create(
     appoiment: CreateAppoimentsDto,
     userId: string,
@@ -39,12 +38,27 @@ export class AppoimentsService {
     if (!doctorExists) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
+
+    if (!doctorExists.active || !doctorExists.user?.active) {
+      throw new HttpException(
+        'Doctor is deactivated and cannot receive appointments',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const patientExists = await this.patientService.findByUserId(
       userId,
       companyId,
     );
     if (!patientExists) {
       throw new HttpException('Patient not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (!patientExists.active || !patientExists.user?.active) {
+      throw new HttpException(
+        'Patient is deactivated and cannot book appointments',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const when = new Date(dateTime);
@@ -139,7 +153,7 @@ export class AppoimentsService {
 
   async findById(
     appoiments_id: string,
-    userId: string,
+    patientId: string,
     companyId: string,
     userRole: 'patient' | 'doctor' | 'admin',
   ) {
@@ -147,18 +161,25 @@ export class AppoimentsService {
       where: { appoiments_id, company_id: companyId },
       include: [Patient, Doctor],
     });
+
     if (!appoiment) {
       throw new HttpException('Appoiment not found', HttpStatus.NOT_FOUND);
     }
 
-    if (userRole === 'patient' && appoiment.patient_id !== userId) {
+    if (
+      userRole === 'patient' &&
+      appoiment.patient_id.toString().trim() !== patientId.toString().trim()
+    ) {
       throw new HttpException(
         'You are not allowed to view this appoiment',
         HttpStatus.FORBIDDEN,
       );
     }
 
-    if (userRole === 'doctor' && appoiment.doctor_id !== userId) {
+    if (
+      userRole === 'doctor' &&
+      appoiment.doctor_id.toString().trim() !== patientId.toString().trim()
+    ) {
       throw new HttpException(
         'You are not allowed to view this appoiment',
         HttpStatus.FORBIDDEN,
@@ -229,57 +250,70 @@ export class AppoimentsService {
     });
   }
 
-  async reschedule(
-    appoiments_id: string,
-    newDateTime: string,
-    patientId: string,
-    companyId: string,
-  ) {
-    const appointment = await this.findById(
-      appoiments_id,
-      patientId,
-      companyId,
-      'patient',
+  async reschedule(appoimentId: string, dateTime: Date, userId: string) {
+    console.log('[Reschedule] Iniciando reagendamento...');
+    console.log('appoimentId recebido:', appoimentId);
+    console.log('userId recebido:', userId);
+    console.log('Novo dateTime recebido:', dateTime);
+
+    const appoiment = await this.appoimentsModel.findOne({
+      where: { appoiments_id: appoimentId },
+      include: [Patient, Doctor],
+    });
+
+    if (!appoiment) {
+      console.error(
+        '[Reschedule] Nenhum agendamento encontrado com o ID:',
+        appoimentId,
+      );
+      throw new HttpException('Appoiment not found', HttpStatus.NOT_FOUND);
+    }
+
+    console.log(
+      '[Reschedule] Agendamento encontrado:',
+      appoiment.appoiments_id,
     );
 
-    if (!appointment) {
-      throw new HttpException('Appointment not found', HttpStatus.NOT_FOUND);
-    }
-
-    const newDate = new Date(newDateTime);
-    if (isNaN(newDate.getTime())) {
-      throw new HttpException('Invalid birth date', HttpStatus.BAD_REQUEST);
-    }
-    if (newDate <= new Date()) {
-      throw new HttpException(
-        'New date must be in the future',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
+    // Verificação de conflito (mesmo horário para o mesmo médico)
     const conflict = await this.appoimentsModel.findOne({
       where: {
-        doctor_id: appointment.doctor_id,
-        company_id: companyId,
-        dateTime: newDateTime,
-        status: {
-          [Op.notIn]: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
-        },
-        appoiments_id: { [Op.ne]: appoiments_id },
+        doctor_id: appoiment.doctor_id,
+        dateTime: dateTime.toISOString(), // agora como string
       },
     });
+
     if (conflict) {
+      console.warn(
+        '[Reschedule] Conflito detectado. Já existe um agendamento nesse horário para o mesmo médico.',
+      );
+      throw new HttpException('Time slot already booked', HttpStatus.CONFLICT);
+    }
+
+    // Atualizar agendamento
+    await this.appoimentsModel.update(
+      { dateTime: dateTime.toISOString() }, // forçando para string
+      { where: { appoiments_id: appoimentId } },
+    );
+
+    console.log('[Reschedule] Agendamento atualizado com sucesso.');
+
+    const updatedAppoiment = await this.appoimentsModel.findOne({
+      where: { appoiments_id: appoimentId },
+      include: [Patient, Doctor],
+    });
+
+    if (!updatedAppoiment) {
+      console.error(
+        '[Reschedule] Erro inesperado: não foi possível recuperar o agendamento após update.',
+      );
       throw new HttpException(
-        'This time slot is already booked for this doctor.',
-        HttpStatus.CONFLICT,
+        'Error retrieving updated appoiment',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
-    await this.appoimentsModel.update(
-      { dateTime: newDateTime }, // string
-      { where: { appoiments_id, company_id: companyId } },
-    );
-    return { message: 'Appointment rescheduled successfully' };
+    console.log('[Reschedule] Retornando agendamento atualizado.');
+    return updatedAppoiment;
   }
 
   async update(
@@ -343,16 +377,23 @@ export class AppoimentsService {
     companyId: string,
     opts: { specialty?: string; q?: string } = {},
   ) {
-    const where: any = { company_id: companyId, active: true };
+    const where: {
+      company_id: string;
+      active: boolean;
+      specialty?: string;
+      [key: string]: any;
+    } = { company_id: companyId, active: true };
     if (opts.specialty) where.specialty = opts.specialty;
 
     if (opts.q) {
       const term = `%${opts.q}%`;
-      where[Op.or] = [
-        { name: { [Op.iLike]: term } },
-        { lastName: { [Op.iLike]: term } },
-        { crm: { [Op.iLike]: term } },
-      ];
+      Object.assign(where, {
+        [Op.or]: [
+          { name: { [Op.iLike]: term } },
+          { lastName: { [Op.iLike]: term } },
+          { crm: { [Op.iLike]: term } },
+        ],
+      });
     }
 
     return this.doctorModel.findAll({
