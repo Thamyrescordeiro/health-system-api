@@ -9,6 +9,9 @@ import {
 } from 'sequelize-typescript';
 import { User } from '../user/user.entity';
 import { CreateCompanyDto } from './dtos/create-company.dto';
+import { Admin } from '../admin/admin.entity';
+import { Doctor } from '../doctors/doctors.entity';
+import { Patient } from '../patient/patient.entity';
 
 @Table({ tableName: 'companies', timestamps: true })
 export class Company extends Model<Company, CreateCompanyDto> {
@@ -31,4 +34,13 @@ export class Company extends Model<Company, CreateCompanyDto> {
 
   @HasMany(() => User, { foreignKey: 'company_id', as: 'users' })
   users: User[];
+
+  @HasMany(() => Admin, { foreignKey: 'company_id', as: 'admins' })
+  admins: Admin[];
+
+  @HasMany(() => Doctor, { foreignKey: 'company_id', as: 'doctors' })
+  doctors: Doctor[];
+
+  @HasMany(() => Patient, { foreignKey: 'company_id', as: 'patients' })
+  patients: Patient[];
 }

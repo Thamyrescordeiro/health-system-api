@@ -47,7 +47,7 @@ export class CompanyService {
 
     if (company.users && Array.isArray(company.users)) {
       for (const user of company.users) {
-        await this.userService.deactivateUser(user.user_id);
+        await user.update({ active: false });
       }
     }
 

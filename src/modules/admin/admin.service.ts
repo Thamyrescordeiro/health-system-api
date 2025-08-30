@@ -47,9 +47,9 @@ export class AdminService {
     const include = [
       {
         model: this.userModel,
-        as: 'user', 
-        attributes: ['user_id', 'active'], 
-        required: false, 
+        as: 'user',
+        attributes: ['user_id', 'active'],
+        required: false,
       },
     ];
 
@@ -63,11 +63,28 @@ export class AdminService {
   }
 
   //Admin//
-  async updateAdmin(adminId: string, dto: Partial<RegisterAdminDto>) {
-    const user = await this.userModel.findByPk(adminId);
-    if (!user) throw new HttpException('Admin not found', HttpStatus.NOT_FOUND);
-    await user.update(dto);
-    return user;
+
+  async updateAdmin(
+    adminId: string,
+    dto: { profile?: { name?: string; lastname?: string; phone?: string } },
+  ) {
+    const admin = await this.findAdminById(adminId);
+
+    if (!admin) {
+      throw new HttpException('Admin not found', HttpStatus.NOT_FOUND);
+    }
+
+    const profile = dto?.profile ?? {};
+    const payload: Partial<Admin> = {};
+    if (typeof profile.name === 'string') payload.name = profile.name;
+    if (typeof profile.lastname === 'string')
+      payload.lastname = profile.lastname;
+    if (typeof profile.phone === 'string') payload.phone = profile.phone;
+
+    await admin.update(payload);
+
+    const updated = await this.findAdminById(admin.admin_id);
+    return updated;
   }
 
   async desactiveAdmin(adminId: string) {
@@ -99,6 +116,26 @@ export class AdminService {
 
   async findAllAdmins() {
     return this.adminModel.findAll({
+      include: [
+        {
+          model: User,
+          attributes: ['user_id', 'email', 'active', 'company_id'],
+        },
+        {
+          model: Company,
+          as: 'company',
+          attributes: ['company_id', 'name', 'active'],
+        },
+      ],
+      order: [
+        [{ model: Company, as: 'company' }, 'name', 'ASC'],
+        ['name', 'ASC'],
+      ],
+    });
+  }
+
+  async findAdminById(adminId: string) {
+    return this.adminModel.findByPk(adminId, {
       include: [{ model: User, attributes: ['email'] }],
     });
   }
@@ -108,7 +145,7 @@ export class AdminService {
       include: [{ model: User, where: { company_id: companyId } }],
     });
   }
-//Companies//
+  //Companies//
   async findAllCompanies() {
     return this.companyModel.findAll();
   }
@@ -180,7 +217,7 @@ export class AdminService {
         },
       ],
       order: [['name', 'ASC']],
-      subQuery: false, 
+      subQuery: false,
     });
   }
 
@@ -233,7 +270,7 @@ export class AdminService {
 
     return doctor;
   }
-// Patients//
+  // Patients//
   async create(data: CreatePatientInlineDto & { company_id: string }) {
     const patientData = {
       ...data,
@@ -260,7 +297,7 @@ export class AdminService {
       include: [
         {
           model: this.userModel,
-          as: 'user', 
+          as: 'user',
           attributes: ['user_id', 'active'],
           required: false,
         },

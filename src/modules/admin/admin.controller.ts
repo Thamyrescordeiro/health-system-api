@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -75,6 +76,36 @@ export class AdminController {
     return this.adminService.findAllAdmins();
   }
 
+  @Get('patients')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async findAllPatients(
+    @Req() req: Request & { user: { company_id: string } },
+    @Query('status') status?: 'all' | 'active' | 'inactive', // 👈
+  ) {
+    const companyId = req.user.company_id;
+    const norm = (status || 'all').toString().toLowerCase() as
+      | 'all'
+      | 'active'
+      | 'inactive';
+    return await this.adminService.findAllPatients(companyId, { status: norm });
+  }
+
+  @Get('doctors')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async findAllDoctors(
+    @Req() req: Request & { user: { company_id: string } },
+    @Query('status') status?: 'all' | 'active' | 'inactive',
+  ) {
+    const companyId = req.user.company_id;
+    const norm = (status || 'all').toString().toLowerCase() as
+      | 'all'
+      | 'active'
+      | 'inactive';
+    return await this.adminService.findAllDoctors(companyId, { status: norm });
+  }
+
   @Get('company/:companyId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
@@ -88,6 +119,13 @@ export class AdminController {
   @Roles('super_admin')
   async findAllCompanies() {
     return this.adminService.findAllCompanies();
+  }
+
+  @Get('/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin')
+  async findAdminById(@Param('id') adminId: string) {
+    return this.adminService.findAdminById(adminId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -128,20 +166,6 @@ export class AdminController {
     return this.adminService.deactivateCompany(id);
   }
   // Doctor //
-  @Get('doctors')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  async findAllDoctors(
-    @Req() req: Request & { user: { company_id: string } },
-    @Query('status') status?: 'all' | 'active' | 'inactive',
-  ) {
-    const companyId = req.user.company_id;
-    const norm = (status || 'all').toString().toLowerCase() as
-      | 'all'
-      | 'active'
-      | 'inactive';
-    return await this.adminService.findAllDoctors(companyId, { status: norm });
-  }
 
   @Get('doctors/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -200,21 +224,6 @@ export class AdminController {
   }
 
   // Patient //
-
-  @Get('patients')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  async findAllPatients(
-    @Req() req: Request & { user: { company_id: string } },
-    @Query('status') status?: 'all' | 'active' | 'inactive', // 👈
-  ) {
-    const companyId = req.user.company_id;
-    const norm = (status || 'all').toString().toLowerCase() as
-      | 'all'
-      | 'active'
-      | 'inactive';
-    return await this.adminService.findAllPatients(companyId, { status: norm });
-  }
 
   @Get('patients/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)

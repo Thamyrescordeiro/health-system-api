@@ -260,6 +260,12 @@ export class AuthService {
       const frontUrl = process.env.FRONT_URL;
       const inviteLink = `${frontUrl}/register/patient?companyId=${companyId}&token=${inviteToken}`;
 
+      await this.emailService.sendMail(
+        user.email,
+        'Sua conta de administrador foi criada',
+        `Olá ${profile.name} ${profile.lastname},\n\nSua conta de administrador foi criada com sucesso.\n\nEmail: ${user.email}\nSenha: ${dto.password}\n\nVocê pode acessar o sistema pelo link: ${process.env.FRONT_URL}/login\n\nSe você não foi quem solicitou essa criação de conta, entre em contato com a administração.`,
+      );
+
       return { user, profile, inviteLink };
     });
   }
