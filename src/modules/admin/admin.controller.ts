@@ -1,8 +1,6 @@
 import {
-  BadRequestException,
   Body,
   Controller,
-  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -13,20 +11,19 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RegisterAdminDto } from '../auth/dtos/register-admin.dto';
+import { UpdateAppoimentsDto } from '../appoiments/dtos/update-appoiments.dto';
+import { InjectModel } from '@nestjs/sequelize';
 import { AdminService } from './admin.service';
-import { CreateCompanyDto } from '../Company/dtos/create-company.dto';
+import { EmailService } from 'src/Email/email.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Company } from '../Company/company.entity';
+import { CreateCompanyDto } from '../Company/dtos/create-company.dto';
 import { UpdateDoctorDto } from '../doctors/dtos/update-doctors.dto';
 import { UpdatePatientDto } from '../patient/dtos/update-patient.dto';
 import { CreateAppoimentsDto } from '../appoiments/dtos/create-appoiments.dto';
-import { UpdateAppoimentsDto } from '../appoiments/dtos/update-appoiments.dto';
-import { Request } from '@nestjs/common';
-import { EmailService } from '../../Email/email.service';
-import { RegisterAdminDto } from '../auth/dtos/register-admin.dto';
-import { Company } from '../Company/company.entity';
-import { InjectModel } from '@nestjs/sequelize';
 
 interface RequestUser {
   user_id: string;
@@ -43,252 +40,189 @@ export class AdminController {
     @InjectModel(Company) private readonly companyModel: typeof Company,
   ) {}
 
-  // Admin//
-
-  @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('super_admin')
-  async updateAdmin(
-    @Param('id') adminId: string,
-    @Body() dto: Partial<RegisterAdminDto>,
-  ) {
-    return this.adminService.updateAdmin(adminId, dto);
-  }
-
-  @Post(':id/deactivate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('super_admin')
-  async deactivateAdmin(@Param('id') adminId: string) {
-    return this.adminService.desactiveAdmin(adminId);
-  }
-
-  @Post(':id/reset-password')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('super_admin')
-  async resetAdminPassword(@Param('id') adminId: string) {
-    return this.adminService.resetAdminPassword(adminId);
-  }
-
   @Get()
   @Roles('super_admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   async findAllAdmins() {
     return this.adminService.findAllAdmins();
   }
 
-  @Get('patients')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  async findAllPatients(
-    @Req() req: Request & { user: { company_id: string } },
-    @Query('status') status?: 'all' | 'active' | 'inactive', // 👈
-  ) {
-    const companyId = req.user.company_id;
-    const norm = (status || 'all').toString().toLowerCase() as
-      | 'all'
-      | 'active'
-      | 'inactive';
-    return await this.adminService.findAllPatients(companyId, { status: norm });
-  }
-
-  @Get('doctors')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  async findAllDoctors(
-    @Req() req: Request & { user: { company_id: string } },
-    @Query('status') status?: 'all' | 'active' | 'inactive',
-  ) {
-    const companyId = req.user.company_id;
-    const norm = (status || 'all').toString().toLowerCase() as
-      | 'all'
-      | 'active'
-      | 'inactive';
-    return await this.adminService.findAllDoctors(companyId, { status: norm });
-  }
-
   @Get('company/:companyId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   async listAdmins(@Param('companyId') company_id: string) {
     return this.adminService.listAdminsByCompany(company_id);
   }
 
-  // Companies //
   @Get('companies')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   async findAllCompanies() {
     return this.adminService.findAllCompanies();
   }
 
-  @Get('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('super_admin')
-  async findAdminById(@Param('id') adminId: string) {
-    return this.adminService.findAdminById(adminId);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @Get('invite')
-  async getInviteLink(@Req() req: Request & { user: { company_id: string } }) {
-    const companyId = req.user.company_id;
-
-    const company = await this.companyModel.findByPk(companyId);
-    if (!company || !company.invite_token) {
-      throw new HttpException('Invite not found', HttpStatus.NOT_FOUND);
-    }
-    const frontUrl = process.env.FRONT_URL;
-
-    return {
-      inviteLink: `${frontUrl}/register/patient?companyId=${companyId}&token=${company.invite_token}`,
-    };
-  }
-
   @Post('create/companies')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   async createCompany(@Body() dto: CreateCompanyDto) {
     return this.adminService.createCompany(dto);
   }
 
   @Patch('companies/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   async updateCompany(@Param('id') id: string, @Body() dto: CreateCompanyDto) {
     return this.adminService.updateCompany(id, dto);
   }
 
   @Post('companies/:id/deactivate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   async deactivateCompany(@Param('id') id: string) {
     return this.adminService.deactivateCompany(id);
   }
-  // Doctor //
+
+  @Get('invite')
+  @Roles('admin')
+  async getInviteLink(@Req() req: Request & { user: { company_id: string } }) {
+    const companyId = req.user.company_id;
+    const company = await this.companyModel.findByPk(companyId);
+    if (!company || !company.invite_token) {
+      throw new HttpException('Invite not found', HttpStatus.NOT_FOUND);
+    }
+    const frontUrl = process.env.FRONT_URL;
+    return {
+      inviteLink: `${frontUrl}/register/patient?companyId=${companyId}&token=${company.invite_token}`,
+    };
+  }
+
+  @Get('doctors')
+  @Roles('admin')
+  async findAllDoctors(
+    @Req() req: Request & { user: { company_id: string } },
+    @Query('status') status?: 'all' | 'active' | 'inactive',
+  ) {
+    const companyId = req.user.company_id;
+    const norm = (status || 'all').toLowerCase() as
+      | 'all'
+      | 'active'
+      | 'inactive';
+    return this.adminService.findAllDoctors(companyId, { status: norm });
+  }
 
   @Get('doctors/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findDoctorById(
     @Param('id') id: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.findDoctorById(id, companyId);
+    return this.adminService.findDoctorById(id, req.user.company_id);
   }
 
   @Get('doctor/crm/:crm')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findDoctorByCrm(
     @Param('crm') crm: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.findDoctorByCrm(crm, companyId);
+    return this.adminService.findDoctorByCrm(crm, req.user.company_id);
   }
 
   @Get('doctor/specialty/:specialty')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findDoctorBySpecialty(
     @Param('specialty') specialty: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.findDoctorBySpecialty(specialty, companyId);
+    return this.adminService.findDoctorBySpecialty(
+      specialty,
+      req.user.company_id,
+    );
   }
 
   @Get('doctor/name/:name')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findDoctorByName(
     @Param('name') name: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.findDoctorByName(name, companyId);
+    return this.adminService.findDoctorByName(name, req.user.company_id);
   }
 
   @Patch('doctor/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async updateDoctor(
     @Param('id') id: string,
     @Body() updateDoctorDto: Partial<UpdateDoctorDto>,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.updateDoctor(id, updateDoctorDto, companyId);
+    return this.adminService.updateDoctor(
+      id,
+      updateDoctorDto,
+      req.user.company_id,
+    );
   }
 
-  // Patient //
+  @Get('patients')
+  @Roles('admin')
+  async findAllPatients(
+    @Req() req: Request & { user: { company_id: string } },
+    @Query('status') status?: 'all' | 'active' | 'inactive',
+  ) {
+    const norm = (status || 'all').toLowerCase() as
+      | 'all'
+      | 'active'
+      | 'inactive';
+    return this.adminService.findAllPatients(req.user.company_id, {
+      status: norm,
+    });
+  }
 
   @Get('patients/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findPatientById(
     @Param('id') id: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.findPatientById(id, companyId);
+    return this.adminService.findPatientById(id, req.user.company_id);
   }
 
   @Get('patients/cpf/:cpf')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findPatientByCpf(
     @Param('cpf') cpf: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.findPatientByCpf(cpf, companyId);
+    return this.adminService.findPatientByCpf(cpf, req.user.company_id);
   }
 
   @Get('patients/name/:name')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findPatientByName(
     @Param('name') name: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.findPatientByName(name, companyId);
+    return this.adminService.findPatientByName(name, req.user.company_id);
   }
 
   @Patch('patients/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async updatePatient(
     @Param('id') id: string,
     @Body() updatePatientDto: Partial<UpdatePatientDto>,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.updatePatient(
+    return this.adminService.updatePatient(
       id,
       updatePatientDto,
-      companyId,
+      req.user.company_id,
     );
   }
 
   @Patch('patients/desactive/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async desactivePatient(
     @Param('id') id: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.desactivePatient(id, companyId);
+    return this.adminService.desactivePatient(id, req.user.company_id);
   }
 
-  // Appoiments //
-
   @Post('appoiments/create')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async createAppoiment(
     @Body() appoimentsDto: CreateAppoimentsDto,
@@ -302,116 +236,110 @@ export class AdminController {
   }
 
   @Get('appoiments/stats')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async getAppoimentsStats(
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.getAppoimentsStats(companyId);
+    return this.adminService.getAppoimentsStats(req.user.company_id);
   }
 
   @Get('appoiments')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findAllAppointments(
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.findAllAppoiments(companyId);
+    return this.adminService.findAllAppoiments(req.user.company_id);
   }
 
   @Get('appoiments/by-date')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findByDate(
     @Query('date') date: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return this.adminService.findByDate(date, companyId);
+    return this.adminService.findByDate(date, req.user.company_id);
   }
 
   @Get('appoiments/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findAppoimentsById(
     @Param('id') appoiments_id: string,
     @Req() req: Request & { user: RequestUser },
   ) {
-    const user = req.user;
-    const userId = user.user_id;
-    const userRole = user.role;
-    const companyId = user.company_id;
-    return await this.adminService.findAppoimentsById(
+    const { user_id, role, company_id } = req.user;
+    return this.adminService.findAppoimentsById(
       appoiments_id,
-      userId,
-      companyId,
-      userRole,
+      user_id,
+      company_id,
+      role,
     );
   }
 
   @Patch('appoiments/reschedule/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async reschedule(
     @Param('id') id: string,
     @Body('dateTime') newDateTime: string,
     @Req() req: Request & { user: RequestUser },
   ) {
-    const user = req.user;
-    const patientId = user.user_id;
-    const companyId = user.company_id;
-    const userRole = user.role;
-    return await this.adminService.reschedule(
+    const { user_id, company_id, role } = req.user;
+    return this.adminService.reschedule(
       id,
       newDateTime,
-      patientId,
-      companyId,
-      userRole,
+      user_id,
+      company_id,
+      role,
     );
   }
+
   @Patch('appoiments/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async updateAppointment(
     @Param('id') id: string,
     @Body() updateAppoimentsDto: UpdateAppoimentsDto,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.updateAppoiment(
+    return this.adminService.updateAppoiment(
       id,
       updateAppoimentsDto,
-      companyId,
+      req.user.company_id,
     );
   }
 
   @Patch('appoiments/cancel/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async cancelAppointment(
     @Param('id') id: string,
     @Req() req: Request & { user: { company_id: string } },
   ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.cancelAppoiment(id, companyId);
+    return this.adminService.cancelAppoiment(id, req.user.company_id);
   }
 
-  @Get('appoiments/doctors/:doctorId/availability')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  async availabilityByDoctor(
-    @Param('doctorId') doctorId: string,
-    @Query('date') date: string,
-    @Req() req: Request & { user: { company_id: string } },
+  // -------- ROTAS COM :id (GENÉRICAS) — DEIXE POR ÚLTIMO --------
+  @Patch(':id')
+  @Roles('super_admin')
+  async updateAdmin(
+    @Param('id') adminId: string,
+    @Body() dto: Partial<RegisterAdminDto>,
   ) {
-    if (!date) {
-      throw new BadRequestException(
-        'query param "date" (YYYY-MM-DD) é obrigatório',
-      );
-    }
-    const companyId = req.user.company_id;
-    return this.adminService.findAvailableByDoctor(doctorId, date, companyId);
+    return this.adminService.updateAdmin(adminId, dto);
+  }
+
+  @Post(':id/deactivate')
+  @Roles('super_admin')
+  async deactivateAdmin(@Param('id') adminId: string) {
+    return this.adminService.desactiveAdmin(adminId);
+  }
+
+  @Post(':id/reset-password')
+  @Roles('super_admin')
+  async resetAdminPassword(@Param('id') adminId: string) {
+    return this.adminService.resetAdminPassword(adminId);
+  }
+
+  @Get(':id')
+  @Roles('super_admin')
+  async findAdminById(@Param('id') adminId: string) {
+    return this.adminService.findAdminById(adminId);
   }
 }
