@@ -29,6 +29,6 @@ export class Company extends Model<Company, CreateCompanyDto> {
   @Column({ defaultValue: true })
   declare active: boolean;
 
-  @HasMany(() => User)
+  @HasMany(() => User, { foreignKey: 'company_id', as: 'users' })
   users: User[];
 }

@@ -72,14 +72,12 @@ export class UserService {
         { where: { admin_id: user.admin.admin_id } },
       );
     }
-
     if (user.doctor) {
       await this.doctorModel.update(
         { active: false },
         { where: { doctor_id: user.doctor.doctor_id } },
       );
     }
-
     if (user.patient) {
       await this.patientModel.update(
         { active: false },

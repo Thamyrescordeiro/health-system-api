@@ -179,22 +179,28 @@ export class AdminService {
     updateDoctor: Partial<UpdateDoctorDto>,
     companyId: string,
   ) {
-    const doctor = await this.findDoctorById(doctor_id, companyId);
+    const doctor = await this.doctorModel.findOne({
+      where: { doctor_id, company_id: companyId },
+      include: [User],
+    });
+
     if (!doctor) {
       throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
     }
+
     await doctor.update(updateDoctor);
+
+    if (typeof updateDoctor.active !== 'undefined') {
+      if (!doctor.user) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+
+      await doctor.user.update({ active: updateDoctor.active });
+    }
+
     return doctor;
   }
 
-  async desactiveDoctor(doctor_id: string, companyId: string) {
-    const doctor = await this.findDoctorById(doctor_id, companyId);
-    if (!doctor) {
-      throw new HttpException('Doctor not found', HttpStatus.NOT_FOUND);
-    }
-    await doctor.update({ active: false });
-    return { message: 'Doctor desactivated successfully' };
-  }
   // Patients //
 
   async create(data: CreatePatientInlineDto & { company_id: string }) {

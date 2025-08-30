@@ -194,17 +194,6 @@ export class AdminController {
     return await this.adminService.updateDoctor(id, updateDoctorDto, companyId);
   }
 
-  @Patch('doctor/desactive/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  async desactiveDoctor(
-    @Param('id') id: string,
-    @Req() req: Request & { user: { company_id: string } },
-  ) {
-    const companyId = req.user.company_id;
-    return await this.adminService.desactiveDoctor(id, companyId);
-  }
-
   // Patient //
 
   @Get('patients')
