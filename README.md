@@ -22,64 +22,6 @@ Ele foi escrito em **TypeScript** rodando sobre **Node.js**, utilizando o **Nest
 3. **ORM (@nestjs/sequelize)** acessa o banco relacional conforme os models/entidades.
 4. **Providers**/módulos integram serviços adicionais (e-mail, Gemini API, etc.).
 
-> Abaixo estão instruções de ambiente, execução, autenticação e o catálogo completo de rotas.
-
-
-**Stack:** TypeScript • Node.js • NestJS (arquitetura modular) • @nestjs/sequelize (ORM) • JWT • Google Gemini API
- 
-Esta API foi desenvolvida em **TypeScript** rodando sobre **Node.js**, usando o **NestJS** para organizar o código em **módulos** bem definidos, com **injeção de dependências**, **decorators** e **guards**. Ela atende ao domínio de saúde, permitindo o gerenciamento de **empresas**, **usuários**, **pacientes**, **médicos** e **consultas** (appointments).
-
-### Principais características
-- 🔐 **Autenticação JWT** e **autorização por papéis** (`patient`, `doctor`, `admin`, `super_admin`) via `JwtAuthGuard` e `RolesGuard`.
-- 🏢 **Escopo multiempresa**: quase todas as operações usam `company_id` do usuário autenticado para isolar dados.
-- 📅 **Consultas médicas**: criação, listagem, reagendamento, cancelamento e checagem de disponibilidade por médico/data.
-- 📧 **E-mail**: envio de código para recuperação de senha e comunicações transacionais (configurado via variáveis `MAIL_*`). 
-- 🔗 **Convites**: admins geram links (`/admins/invite`) para cadastro de pacientes no front `FRONT_URL`.
-- 🤖 **Integração com Gemini AI**: utilizada para **analisar informações do paciente** e **identificar urgência de atendimento**, auxiliando admins/médicos a priorizarem casos críticos.
-- 🧩 **Módulos**: `Auth`, `Admins`, `Companies`, `Users`, `Doctor`, `Patient`, `Appoiments`, `Gemini`.
-- 🧱 **DTOs** de entrada/saída para validação forte e padronização de payloads.
-- 🛡️ **Boas práticas NestJS**: controllers enxutos, services com regras de negócio, exceptions HTTP adequadas e rate limiting em endpoints sensíveis.
-
-### Arquitetura em alto nível
-1. **Controllers** recebem a requisição HTTP e aplicam `guards`/`roles`.
-2. **Services** encapsulam a lógica de negócio (ex.: criação de consulta, envio de e-mail, análise Gemini de urgência, estatísticas).
-3. **ORM (@nestjs/sequelize)** acessa o banco relacional conforme os models/entidades.
-4. **Providers**/módulos integram serviços adicionais (e-mail, Gemini API, etc.).
-
-> Abaixo estão instruções de ambiente, execução, autenticação e o catálogo completo de rotas.
-
-
-**Stack:** TypeScript • Node.js • NestJS (arquitetura modular) • @nestjs/sequelize (ORM) • JWT
- 
-Esta API foi desenvolvida em **TypeScript** rodando sobre **Node.js**, usando o **NestJS** para organizar o código em **módulos** bem definidos, com **injeção de dependências**, **decorators** e **guards**. Ela atende ao domínio de saúde, permitindo o gerenciamento de **empresas**, **usuários**, **pacientes**, **médicos** e **consultas** (appointments).
-
-### Principais características
-- 🔐 **Autenticação JWT** e **autorização por papéis** (`patient`, `doctor`, `admin`, `super_admin`) via `JwtAuthGuard` e `RolesGuard`.
-- 🏢 **Escopo multiempresa**: quase todas as operações usam `company_id` do usuário autenticado para isolar dados.
-- 📅 **Consultas médicas**: criação, listagem, reagendamento, cancelamento e checagem de disponibilidade por médico/data.
-- 📧 **E-mail**: envio de código para recuperação de senha e comunicações transacionais (configurado via variáveis `MAIL_*`). 
-- 🔗 **Convites**: admins geram links (`/admins/invite`) para cadastro de pacientes no front `FRONT_URL`.
-- 🧩 **Módulos**: `Auth`, `Admins`, `Companies`, `Users`, `Doctor`, `Patient`, `Appoiments`.
-- 🧱 **DTOs** de entrada/saída para validação forte e padronização de payloads.
-- 🛡️ **Boas práticas NestJS**: controllers enxutos, services com regras de negócio, exceptions HTTP adequadas e rate limiting em endpoints sensíveis.
-
-### Arquitetura em alto nível
-1. **Controllers** recebem a requisição HTTP e aplicam `guards`/`roles`.
-2. **Services** encapsulam a lógica de negócio (ex.: criação de consulta, envio de e-mail, estatísticas).
-3. **ORM (@nestjs/sequelize)** acessa o banco relacional conforme os models/entidades.
-4. **Providers**/módulos integram serviços adicionais (e-mail, Gemini API, etc.).
-
-> Abaixo estão instruções de ambiente, execução, autenticação e o catálogo completo de rotas.
-
-
-# 🏥 Health System API — README
-
-API REST construída com **NestJS** para gestão de sistema de saúde.  
-Este README documenta **variáveis de ambiente**, **papéis e guards**, e **todas as rotas** encontradas nos controllers fornecidos.
-
-> **Status**: Documentação baseada nos trechos enviados de `AuthController`, `AdminController`, `CompanyController`, `UserController`, `DoctorsController`, `PatientController` e `AppoimentsController`.
-
----
 
 ## ⚙️ Variáveis de Ambiente (.env)
 
